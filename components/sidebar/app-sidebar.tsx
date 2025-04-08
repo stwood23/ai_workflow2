@@ -6,19 +6,11 @@ This client component provides the sidebar for the app.
 
 "use client"
 
-import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal
-} from "lucide-react"
+import { Database, FileText, Settings2, Workflow } from "lucide-react"
 import * as React from "react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 import {
   Sidebar,
@@ -27,99 +19,81 @@ import {
   SidebarHeader,
   SidebarRail
 } from "@/components/ui/sidebar"
-import { NavMain } from "./nav-main"
-import { NavProjects } from "./nav-projects"
 import { NavUser } from "./nav-user"
-import { TeamSwitcher } from "./team-switcher"
+import { UserButton } from "@clerk/nextjs"
+import type { LucideIcon } from "lucide-react"
 
-// Sample data
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg"
-  },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise"
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup"
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free"
-    }
-  ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        { title: "History", url: "#" },
-        { title: "Starred", url: "#" },
-        { title: "Settings", url: "#" }
-      ]
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        { title: "Genesis", url: "#" },
-        { title: "Explorer", url: "#" },
-        { title: "Quantum", url: "#" }
-      ]
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        { title: "Introduction", url: "#" },
-        { title: "Get Started", url: "#" },
-        { title: "Tutorials", url: "#" },
-        { title: "Changelog", url: "#" }
-      ]
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        { title: "General", url: "#" },
-        { title: "Team", url: "#" },
-        { title: "Billing", url: "#" },
-        { title: "Limits", url: "#" }
-      ]
-    }
-  ],
-  projects: [
-    { name: "Design Engineering", url: "#", icon: Frame },
-    { name: "Sales & Marketing", url: "#", icon: PieChart },
-    { name: "Travel", url: "#", icon: Map }
-  ]
+interface NavItem {
+  title: string
+  url: string
+  icon: LucideIcon
+  isActive?: boolean
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname()
+
+  const navItems: NavItem[] = [
+    {
+      title: "Prompts",
+      url: "/prompts",
+      icon: FileText,
+      isActive: pathname.startsWith("/prompts")
+    },
+    {
+      title: "Documents",
+      url: "/documents",
+      icon: FileText,
+      isActive: pathname.startsWith("/documents")
+    },
+    {
+      title: "Context",
+      url: "/context",
+      icon: Database,
+      isActive: pathname.startsWith("/context")
+    },
+    {
+      title: "Workflows",
+      url: "/workflows",
+      icon: Workflow,
+      isActive: pathname.startsWith("/workflows")
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings2,
+      isActive: pathname.startsWith("/settings")
+    }
+  ]
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <div className="p-4 text-lg font-semibold">AI Flow</div>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+      <SidebarContent className="flex flex-col p-2">
+        <nav className="flex flex-col gap-1">
+          {navItems.map(item => (
+            <Link
+              key={item.title}
+              href={item.url}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                item.isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <item.icon className="size-4" />
+              <span>{item.title}</span>
+            </Link>
+          ))}
+        </nav>
       </SidebarContent>
       <SidebarFooter>
-        <NavUser />
+        <div className="p-4">
+          <UserButton afterSignOutUrl="/" />
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

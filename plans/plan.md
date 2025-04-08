@@ -3,14 +3,14 @@
 ## Phase 0: Project Setup & Configuration
 
 - [x] Step 0.1: Initialize Environment Variables
-    - **Task**: Create the `.env.local` file based on `.env.example` and add placeholders for required keys (Clerk, Supabase, Stripe, PostHog, OpenAI/Anthropic/Grok). Update `.env.example` if necessary.
+    - **Task**: Create the `.env.local` file based on `.env.example` and add placeholders for required keys (Clerk, Supabase, PostHog, OpenAI/Anthropic/Grok). Update `.env.example` if necessary.
     - **Files**:
         - `.env.local`: Create and add placeholders.
         - `.env.example`: Update with any missing keys from `tech-spec.md`.
     - **Step Dependencies**: None
     - **User Instructions**: Fill in the actual API keys and connection strings in `.env.local`. Do not commit `.env.local`.
 
-- [ ] Step 0.2: Setup Core Types & Utilities
+- [x] Step 0.2: Setup Core Types & Utilities
     - **Task**: Define the base `ActionState` type and implement the `cn` utility function. Export necessary types.
     - **Files**:
         - `types/actions-types.ts`: Define `ActionState<T>`.
@@ -19,7 +19,7 @@
     - **Step Dependencies**: None
     - **User Instructions**: None
 
-- [ ] Step 0.3: Configure Drizzle ORM
+- [x] Step 0.3: Configure Drizzle ORM
     - **Task**: Set up the Drizzle client instance in `db/db.ts` and configure `drizzle.config.ts`. Define the shared enums.
     - **Files**:
         - `db/schema/enums.ts`: Define `llmProviderEnum`, `workflowStatusEnum`.
@@ -29,7 +29,7 @@
     - **Step Dependencies**: Step 0.1
     - **User Instructions**: Ensure Supabase connection URL is correctly set in `.env.local`.
 
-- [ ] Step 0.4: Configure Clerk Authentication Provider
+- [x] Step 0.4: Configure Clerk Authentication Provider
     - **Task**: Set up Clerk provider in the root layout.
     - **Files**:
         - `app/layout.tsx`: Wrap content with `<ClerkProvider>`. Add `"use client"` directive if state/hooks are used, otherwise keep as `"use server"` if possible (check Clerk docs for App Router setup).
@@ -37,7 +37,7 @@
     - **Step Dependencies**: Step 0.1
     - **User Instructions**: Ensure Clerk environment variables are set in `.env.local`.
 
-- [ ] Step 0.5: Configure PostHog Analytics
+- [x] Step 0.5: Configure PostHog Analytics
     - **Task**: Set up the PostHog provider in the root layout.
     - **Files**:
         - `app/layout.tsx`: Wrap content (inside ClerkProvider) with `<PostHogProvider>`. Initialize PostHog client using environment variables.
@@ -45,14 +45,7 @@
     - **Step Dependencies**: Step 0.1
     - **User Instructions**: Ensure PostHog environment variables are set in `.env.local`.
 
-- [ ] Step 0.6: Configure Stripe
-    - **Task**: Initialize the Stripe client.
-    - **Files**:
-        - `lib/stripe.ts`: Initialize Stripe Node.js client using the secret key from environment variables.
-    - **Step Dependencies**: Step 0.1
-    - **User Instructions**: Ensure Stripe environment variables (secret key, webhook secret) are set in `.env.local`.
-
-- [ ] Step 0.7: Configure LLM Abstraction
+- [ ] Step 0.6: Configure LLM Abstraction
     - **Task**: Create a placeholder file for the LLM abstraction layer. Define basic types.
     - **Files**:
         - `lib/llm.ts`: Create file with placeholder comments for future LLM API interaction logic.
@@ -63,17 +56,7 @@
 
 ## Phase 1: Core Backend & Layout
 
-- [ ] Step 1.1: Define User Subscription Schema & Actions
-    - **Task**: Create the `user_subscriptions` table schema and basic CRUD actions. Update `db.ts` schema object.
-    - **Files**:
-        - `db/schema/user-subscriptions.ts`: Define `userSubscriptionsTable` schema as per spec.
-        - `db/schema/index.ts`: Export schema types and table.
-        - `db/db.ts`: Add `userSubscriptions: userSubscriptionsTable` to the schema object.
-        - `actions/db/user-subscriptions-actions.ts`: Implement `getUserSubscriptionAction`, `createUserSubscriptionAction`, `updateUserSubscriptionAction`, `deleteUserSubscriptionAction` following `ActionState` pattern and including `userId` checks.
-    - **Step Dependencies**: Step 0.3
-    - **User Instructions**: Run `npx drizzle-kit push:pg` to sync schema changes with the database.
-
-- [ ] Step 1.2: Verify & Update Protected Layout & Sidebar
+- [ ] Step 1.1: Verify & Update Protected Layout & Sidebar
     - **Task**: Ensure the existing layout for authenticated users includes a functional sidebar meeting the spec requirements (links, icons, active state).
     - **Files**:
         - `app/(protected)/layout.tsx`: Verify it's marked `"use server"`, includes `<Sidebar />`.
@@ -83,7 +66,7 @@
     - **Step Dependencies**: Step 0.4
     - **User Instructions**: Ensure `lucide-react` is installed (`npm install lucide-react`). Verify the paths for the layout and sidebar files match your existing structure.
 
-- [ ] Step 1.3: Create Shared Utility Components
+- [ ] Step 1.2: Create Shared Utility Components
     - **Task**: Implement basic shared utility components like PageHeader, LoadingSpinner, SkeletonLoader.
     - **Files**:
         - `components/utilities/page-header.tsx`: Create component for consistent page titles.
@@ -112,7 +95,7 @@
         - `lib/llm.ts`: Add placeholder functions like `callLlmApi(prompt, provider, options)` that these actions can call. Define system prompts in `prompts/` directory.
         - `prompts/optimize_prompt.txt`: Create system prompt for optimization.
         - `prompts/generate_title.txt`: Create system prompt for title generation.
-    - **Step Dependencies**: Step 0.7, Step 2.1
+    - **Step Dependencies**: Step 0.6, Step 2.1
     - **User Instructions**: None
 
 - [ ] Step 2.3: Create Prompts Page UI
@@ -124,7 +107,7 @@
         - `app/(protected)/prompts/_components/create-prompt-button.tsx`: Client component button triggering the modal.
         - `components/ui/card.tsx`: Ensure Shadcn Card component is added.
         - `components/ui/button.tsx`: Ensure Shadcn Button component is added.
-    - **Step Dependencies**: Step 1.2, Step 1.3, Step 2.1
+    - **Step Dependencies**: Step 1.1, Step 1.2, Step 2.1
     - **User Instructions**: Add Shadcn `Card` component (`npx shadcn-ui@latest add card`).
 
 - [ ] Step 2.4: Create Prompt Creation Modal
@@ -166,7 +149,7 @@
         - `app/(protected)/context/_components/snippets-list-skeleton.tsx`: Skeleton loader.
         - `app/(protected)/context/_components/create-snippet-button.tsx`: Client component button triggering the modal.
         - `components/ui/table.tsx`: Ensure Shadcn Table component is added if used.
-    - **Step Dependencies**: Step 1.2, Step 1.3, Step 3.1
+    - **Step Dependencies**: Step 1.1, Step 1.2, Step 3.1
     - **User Instructions**: Add Shadcn `Table` if needed (`npx shadcn-ui@latest add table`).
 
 - [ ] Step 3.3: Create Context Snippet Modal
@@ -217,7 +200,7 @@
         - `actions/db/context-snippets-actions.ts`: Ensure `getContextSnippetByNameAction` exists and works.
         - `actions/db/prompts-actions.ts`: Ensure `getPromptTemplateAction` exists.
         - `actions/db/documents-actions.ts`: Ensure `createDocumentAction` exists.
-    - **Step Dependencies**: Step 0.7, Step 2.1, Step 3.1, Step 4.2
+    - **Step Dependencies**: Step 0.6, Step 2.1, Step 3.1, Step 4.2
     - **User Instructions**: None
 
 - [ ] Step 4.4: Create Documents Page UI
@@ -228,7 +211,7 @@
         - `app/(protected)/documents/_components/documents-list-skeleton.tsx`: Skeleton loader.
         - `app/(protected)/documents/_components/generate-document-button.tsx`: Client component button triggering the modal.
         - `components/ui/data-table.tsx`: Ensure Shadcn DataTable component is added/configured.
-    - **Step Dependencies**: Step 1.2, Step 1.3, Step 4.2
+    - **Step Dependencies**: Step 1.1, Step 1.2, Step 4.2
     - **User Instructions**: Add Shadcn `DataTable` (`npx shadcn-ui@latest add table`, plus custom data-table component setup as per Shadcn docs).
 
 - [ ] Step 4.5: Create Document Generation Modal
@@ -265,7 +248,7 @@
         - `actions/llm-actions.ts`: Implement `editDocumentViaChatAction`. Takes current content and command, calls LLM with specific edit instructions (new system prompt), returns new content and AI response. **Does not save to DB.**
         - `lib/llm.ts`: Add function for chat-based editing.
         - `prompts/edit_document.txt`: Create system prompt for editing task.
-    - **Step Dependencies**: Step 0.7, Step 4.6
+    - **Step Dependencies**: Step 0.6, Step 4.6
     - **User Instructions**: None
 
 - [ ] Step 5.2: Enhance Document Edit Page Layout
@@ -303,7 +286,7 @@
         - `actions/llm-actions.ts`: Implement `suggestPromptImprovementAction`. Takes original prompt template and final document content. Calls LLM with specific system prompt instructing it to refine the prompt while preserving `{{placeholders}}`. Returns suggested prompt string.
         - `lib/llm.ts`: Add function for prompt improvement.
         - `prompts/suggest_prompt_improvement.txt`: Create system prompt for this task.
-    - **Step Dependencies**: Step 0.7, Step 2.1, Step 5.1
+    - **Step Dependencies**: Step 0.6, Step 2.1, Step 5.1
     - **User Instructions**: None
 
 - [ ] Step 6.2: Create Prompt Improvement Modal
@@ -369,7 +352,7 @@
         - `app/(protected)/workflows/_components/workflow-templates-list.tsx`: Component (DataTable) listing templates with Edit, Run, Delete actions.
         - `app/(protected)/workflows/_components/workflow-instances-list.tsx`: Component (DataTable) listing instances with View action.
         - `app/(protected)/workflows/_components/create-workflow-button.tsx`: Button linking to `/workflows/new`.
-    - **Step Dependencies**: Step 1.2, Step 1.3, Step 7.2
+    - **Step Dependencies**: Step 1.1, Step 1.2, Step 7.2
     - **User Instructions**: None
 
 - [ ] Step 7.5: Create Workflow Editor Page & Component

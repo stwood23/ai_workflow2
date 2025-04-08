@@ -11,8 +11,7 @@
     5. AI-Assisted Prompt Template Improvement
     6. Workflow Template Creation & Execution (Chaining Prompts)
     7. User Authentication & Authorization
-    8. Subscription Management (Free/Pro Tiers)
-    9. Analytics Tracking (User Behavior)
+    8. Analytics Tracking (User Behavior)
 - **System architecture:**
     - **Frontend:**
         - Next.js 14+ (App Router), React 18+, TypeScript
@@ -20,10 +19,9 @@
         - Primarily Server Components with Client Components for interactivity.
     - **Backend:**
         - Node.js (via Next.js Server Actions/Route Handlers).
-        - PostgreSQL (managed by Supabase).
+        - Supabase (PostgreSQL).
         - Drizzle ORM.
     - **Authentication:** Clerk.
-    - **Payments:** Stripe.
     - **Analytics:** PostHog.
     - **Deployment:** Vercel.
     - **LLM Providers:** OpenAI, Anthropic, Grok (via API integrations).
@@ -32,7 +30,7 @@
 - Adheres to `.cursorrules`, utilizing a standard Next.js App Router structure:
     - `actions/`: Server Actions.
         - `db/`: Database-specific actions (e.g., `prompts-actions.ts`, `documents-actions.ts`). Organized by schema. CRUD order within files.
-        - `index.ts`: Root actions (e.g., `llm-actions.ts`, `workflow-actions.ts`, `stripe-actions.ts`).
+        - `index.ts`: Root actions (e.g., `llm-actions.ts`, `workflow-actions.ts`).
     - `app/`: Next.js App Router.
         - `(auth)/`: Clerk authentication routes (sign-in, sign-up).
         - `(protected)/`: Authenticated application routes.
@@ -56,10 +54,8 @@
                 - `[templateId]/run/page.tsx`: Initiate workflow instance run.
                 - `instances/[instanceId]/page.tsx`: View workflow instance progress/results.
                 - `_components/`: Workflow-specific components (e.g., `workflow-editor.tsx`, `workflow-instance-view.tsx`, `workflow-templates-list.tsx`).
-            - `settings/`: User settings (e.g., billing).
-                - `page.tsx` / `billing/page.tsx`: Manage subscription.
+            - `settings/`: User settings.
         - `api/`: API Route Handlers.
-            - `webhooks/stripe/route.ts`: Stripe webhook handler.
         - `layout.tsx`: Root layout (Clerk provider, PostHog provider).
         - `global.css`: Tailwind base styles.
     - `components/`: Shared components.
@@ -76,14 +72,12 @@
             - `context-snippets.ts`
             - `workflow-templates.ts`
             - `workflow-instances.ts`
-            - `user-subscriptions.ts`
         - `migrations/`: Drizzle migrations (ignored per rules, but directory exists).
     - `lib/`: Library code.
         - `utils.ts`: General utility functions (e.g., `cn` from Shadcn).
         - `hooks/`: Custom React hooks (if needed).
         - `constants.ts`: Application constants.
         - `llm.ts`: Abstraction layer for interacting with different LLM APIs.
-        - `stripe.ts`: Stripe client instance.
         - `posthog.ts`: PostHog client instance helper (if needed beyond provider).
     - `prompts/`: Text files containing system prompts for LLM interactions (e.g., `optimize_prompt.txt`, `generate_title.txt`).
     - `public/`: Static assets (images, fonts if not using CDN).
@@ -93,12 +87,12 @@
         - `db-types.ts`: Types inferred from Drizzle schemas (e.g., `SelectPromptTemplate`, `InsertDocument`). These are generally imported directly from the schema files (`@/db/schema`).
         - `llm-types.ts`: Types for LLM interactions.
         - `workflow-types.ts`: Types for workflow node structures, etc.
-    - `.env.local`: Local environment variables (Clerk, Supabase, Stripe, PostHog, LLM keys).
+    - `.env.local`: Local environment variables (Clerk, Supabase, PostHog, LLM keys).
     - `.env.example`: Example environment variables.
     - `.cursorrules`: Project rules.
     - `components.json`: Shadcn UI configuration.
     - `drizzle.config.ts`: Drizzle configuration.
-    - `middleware.ts`: Clerk authentication middleware.
+    - `middleware.ts`: Clerk authentication middleware (assumed pre-configured).
     - `next.config.mjs`: Next.js configuration.
     - `package.json`: Project dependencies.
     - `tsconfig.json`: TypeScript configuration.
@@ -317,7 +311,6 @@ import { pgEnum } from "drizzle-orm/pg-core";
 
 export const llmProviderEnum = pgEnum("llm_provider", ["openai", "anthropic", "grok"]);
 export const workflowStatusEnum = pgEnum("workflow_status", ["pending", "running", "completed", "failed"]);
-export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "canceled", "incomplete", "incomplete_expired", "past_due", "unpaid", "trialing"]);
 ```
 
 ### 4.2 Tables
@@ -434,38 +427,12 @@ export type SelectWorkflowInstance = typeof workflowInstancesTable.$inferSelect;
 export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
 ```
 
-**`user_subscriptions` (`db/schema/user-subscriptions.ts`)**
-```typescript
-import { pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { subscriptionStatusEnum } from "./enums";
-
-export const userSubscriptionsTable = pgTable("user_subscriptions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").notNull().unique(), // Link to Clerk User ID, one subscription per user
-  stripeCustomerId: text("stripe_customer_id").notNull().unique(),
-  stripeSubscriptionId: text("stripe_subscription_id").unique(), // Can be null if customer created but no active sub
-  stripePriceId: text("stripe_price_id"), // ID of the active plan's price
-  stripeCurrentPeriodEnd: timestamp("stripe_current_period_end"), // End date of current billing cycle
-  status: subscriptionStatusEnum("status"), // Status from Stripe
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
-}, (table) => {
-  return {
-    userIdx: uniqueIndex("user_subscription_user_id_idx").on(table.userId),
-  };
-});
-
-export type SelectUserSubscription = typeof userSubscriptionsTable.$inferSelect;
-export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
-
-```
 ### 4.3 Relationships and Indexes
 - `documents.promptTemplateId` -> `prompt_templates.id` (ON DELETE SET NULL)
 - `documents.workflowInstanceId` -> `workflow_instances.id` (ON DELETE CASCADE)
 - `workflow_instances.workflowTemplateId` -> `workflow_templates.id` (ON DELETE CASCADE)
 - Indexes created on `userId` for all tables.
 - Unique index on `context_snippets(userId, name)`.
-- Unique indexes on `user_subscriptions(userId)`, `user_subscriptions(stripeCustomerId)`, `user_subscriptions(stripeSubscriptionId)`.
 
 ## 5. Server Actions
 - Follow `ActionState<T>` pattern defined in `.cursorrules`.
@@ -522,11 +489,6 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
     - `getWorkflowInstanceAction(...)`
     - `updateWorkflowInstanceStatusAction(instanceId: string, status: WorkflowStatusEnum, nodeStatuses: Json, userId: string): Promise<ActionState<void>>`
     - `getWorkflowInstancesForTemplateAction(...)`
-- **`user-subscriptions-actions.ts`:**
-    - `getUserSubscriptionAction(userId: string): Promise<ActionState<SelectUserSubscription | null>>`
-    - `createUserSubscriptionAction(...)` (called by webhook)
-    - `updateUserSubscriptionAction(...)` (called by webhook)
-    - `deleteUserSubscriptionAction(...)` (called by webhook)
 
 ### 5.2 Other Actions (`actions/*.ts`)
 - **`llm-actions.ts` (`actions/llm-actions.ts`):**
@@ -538,14 +500,10 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
 - **`workflow-actions.ts` (`actions/workflow-actions.ts`):**
     - `runWorkflowInstanceAction(instanceId: string, userId: string): Promise<ActionState<void>>`: Orchestrates the step-by-step execution of a workflow instance. Fetches instance/template. Iterates through nodes based on `edges`, calls `generateDocumentAction` for each prompt node (passing `instanceId`, `nodeId`), updates `workflow_instances.nodeStatuses` after each step. Handles sequential execution initially.
     - `retryWorkflowNodeAction(instanceId: string, nodeId: string, userId: string): Promise<ActionState<void>>`: Allows retrying a failed node. Resets node status and re-triggers processing for that node.
-- **`stripe-actions.ts` (`actions/stripe-actions.ts`):**
-    - `createCheckoutSessionAction(priceId: string, userId: string): Promise<ActionState<{ sessionId: string }>>`: Creates Stripe Checkout session, returns session ID for redirect.
-    - `createBillingPortalSessionAction(customerId: string, userId: string): Promise<ActionState<{ url: string }>>`: Creates Stripe Billing Portal session, returns URL for redirect.
 
 ### 5.3 External API Integrations
 - **LLM Providers (OpenAI, Anthropic, Grok):** Interactions managed via `lib/llm.ts`. Requires API keys stored securely in `.env.local` (e.g., `OPENAI_API_KEY`). Ensure proper error handling for API calls (timeouts, rate limits, auth errors).
 - **Clerk:** Authentication handled via `@clerk/nextjs` middleware and `auth()` helper. No direct API calls needed typically.
-- **Stripe:** Interactions via `stripe` Node.js library, initialized in `lib/stripe.ts`. Requires Stripe secret key and webhook secret in `.env.local`.
 - **PostHog:** Interactions via `posthog-js` (client-side) or `posthog-node` (server-side). Requires PostHog API key and host in `.env.local` / `NEXT_PUBLIC_POSTHOG_KEY`.
 
 ### 5.4 Data Processing Algorithms
@@ -697,8 +655,7 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
     - Use Clerk components for sign-in (`<SignIn>`), sign-up (`<SignUp>`), user profile (`<UserButton>`), organization switching if applicable.
     - Mount Clerk auth routes within the `app/(auth)` layout group (e.g., `app/(auth)/sign-in/[[...sign-in]]/page.tsx`).
 - **Protected Routes:**
-    - Use `middleware.ts` with `authMiddleware` from `@clerk/nextjs/server`.
-    - Define `publicRoutes` (e.g., `/`, `/sign-in`, `/sign-up`, `/api/webhooks/*`). All other routes will require authentication.
+    - `middleware.ts` (using `@clerk/nextjs/server`) enforces authentication, ensuring routes not explicitly marked as public require a logged-in user.
     - The `(protected)` layout group visually organizes authenticated routes but protection is enforced by the middleware.
 - **Session Management:** Handled automatically by Clerk's middleware and React context providers. Clerk manages tokens/cookies. No need to store session data in the application database.
 - **Authorization:**
@@ -714,33 +671,8 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
     - `react-hook-form`: For managing form state, validation, and submission.
     - Zustand/Jotai: For complex, shared UI state that needs to persist across interactions or components without prop drilling (e.g., nodes/edges in the `WorkflowEditor`, potentially the live document content in the `DocumentEditor`/`ChatSidebar` interaction). Store *ephemeral* state here; persist to DB via Server Actions on save/completion.
 
-## 10. Stripe Integration
-- **Subscription Model:** Define Tiers (e.g., Free, Pro) with associated features/limits (e.g., # prompts, # workflow runs/month). Configure corresponding Products and Prices in Stripe dashboard. Store Price IDs (e.g., `price_xxxxxxxx`) in `.env.local`.
-- **Payment Flow Diagram:**
-    1.  User clicks "Upgrade" button on `/settings/billing` page.
-    2.  Client calls `createCheckoutSessionAction` (Server Action) passing the selected `priceId` and `userId`.
-    3.  Server Action uses Stripe Node library (`lib/stripe.ts`) to create a checkout session. Include `userId` and `priceId` in `metadata`.
-    4.  Action returns `{ sessionId }`. Client uses Stripe.js (`redirectToCheckout({ sessionId })`) to redirect user to Stripe Checkout page.
-    5.  User completes payment on Stripe.
-    6.  Stripe sends `checkout.session.completed` webhook event to `/api/webhooks/stripe/route.ts`.
-    7.  Webhook handler verifies signature using `STRIPE_WEBHOOK_SECRET`.
-    8.  Handler extracts `userId` from session metadata, retrieves customer/subscription details from the event object.
-    9.  Handler calls `createUserSubscriptionAction` or `updateUserSubscriptionAction` (DB actions) to save/update subscription details (`stripeCustomerId`, `stripeSubscriptionId`, `status`, `stripeCurrentPeriodEnd`, etc.) in `user_subscriptions` table.
-    10. User is redirected back to the application (e.g., billing page) by Stripe Checkout. The application should now reflect the updated subscription status (fetched via `getUserSubscriptionAction`).
-- **Webhook Handling (`/api/webhooks/stripe/route.ts`):**
-    - Use `stripe.webhooks.constructEvent` with the raw request body and `stripe-signature` header to verify signature and parse event.
-    - Handle key events:
-        - `checkout.session.completed`: Create Stripe Customer if new, create/update `user_subscriptions` record with details.
-        - `invoice.payment_succeeded`: Update `status` to 'active', update `stripeCurrentPeriodEnd`.
-        - `invoice.payment_failed`: Update `status` (e.g., 'past_due', 'unpaid'). Potentially trigger notifications.
-        - `customer.subscription.updated`: Sync changes in status, price, `stripeCurrentPeriodEnd`. Handle upgrades/downgrades/cancellations initiated outside initial checkout.
-        - `customer.subscription.deleted`: Update `status` to 'canceled' at period end.
-    - Ensure idempotency: Check if an event ID has already been processed before updating the database (e.g., store processed event IDs temporarily or check DB state). Return `200 OK` to Stripe quickly.
-- **Billing Portal:** Settings page button calls `createBillingPortalSessionAction` (Server Action) -> Action uses Stripe API to create portal session -> Action returns `{ url }` -> Client redirects user to the Stripe Billing Portal URL (`window.location.href = url`).
-- **Feature Gating:** Server Actions and potentially Server Components check user's subscription status via `getUserSubscriptionAction`. Compare status and potentially `stripeCurrentPeriodEnd` against feature requirements before allowing access to Pro features or enforcing usage limits.
-
-## 11. PostHog Analytics
-- **Strategy:** Track key user lifecycle events (signup, subscription), feature engagement (prompt creation, doc generation, workflow runs), and conversion funnels (view pricing -> checkout -> subscribed).
+## 10. PostHog Analytics
+- **Strategy:** Track key user lifecycle events (signup), feature engagement (prompt creation, doc generation, workflow runs).
 - **Implementation:**
     - Use `posthog-js` library for client-side tracking and `posthog-node` for server-side tracking (e.g., within Server Actions after successful operations).
     - Initialize `PostHogProvider` in `app/layout.tsx` with `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` from `.env`.
@@ -757,14 +689,15 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
         - Server-side: Triggered within Server Actions after successful DB operations or significant events.
             ```typescript
             // Example in a server action
-            import { PostHog } from 'posthog-node' // Or use configured client instance
-            const client = new PostHog(process.env.POSTHOG_API_KEY!, { host: process.env.POSTHOG_HOST })
-            // ... after successful stripe webhook processing
-            await client.capture({
-              distinctId: userId,
-              event: 'subscription_created',
-              properties: { priceId: stripePriceId, status: newStatus },
-            })
+            import { PostHog } from 'posthog-node'; // Or use configured client instance
+            const client = new PostHog(process.env.POSTHOG_API_KEY!, { host: process.env.POSTHOG_HOST });
+            // ... after successful significant server-side event ...
+            // Example:
+            // await client.capture({
+            //   distinctId: userId,
+            //   event: 'workflow_instance_run_completed',
+            //   properties: { templateId: ..., status: 'completed' },
+            // })
             await client.shutdown() // Important for serverless environments
             ```
         - Key Events to Track:
@@ -776,15 +709,11 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
             - `workflow_template_created`, `workflow_template_updated`
             - `workflow_instance_run_started` (props: `templateId`)
             - `workflow_instance_run_completed` (props: `templateId`, `status`, `durationSeconds`?)
-            - `checkout_session_created` (props: `priceId`)
-            - `subscription_created` (props: `priceId`, `status`)
-            - `subscription_canceled`
-            - `billing_portal_opened`
 - **Custom Properties:**
-    - User Properties (`posthog.identify` or `posthog.people.set`): `plan_type` (free/pro), `subscription_status`, `created_at`.
+    - User Properties (`posthog.identify` or `posthog.people.set`): `created_at`.
     - Event Properties (passed with `capture`): Relevant IDs (`promptId`, `documentId`, `templateId`, `instanceId`), settings used (`llmProvider`), counts (`contextSnippetsUsedCount`), status (`workflow_status`).
 
-## 12. Testing
+## 11. Testing
 - **Frameworks:** Vitest for unit/integration tests (runs in Node environment, good for Next.js), React Testing Library (RTL) for component interactions, Playwright for E2E tests.
 - **Unit Tests (`*.test.ts`):**
     - Test utility functions (`lib/utils.ts`).
@@ -839,7 +768,6 @@ export type InsertUserSubscription = typeof userSubscriptionsTable.$inferInsert;
     - Cover critical user paths:
         - Sign up -> Create Prompt -> Generate Document -> Edit Document -> Save.
         - Create Workflow Template -> Add Nodes -> Save -> Run Workflow -> Verify outputs/instance status.
-        - Navigate to Settings -> Billing -> Click Upgrade (mock Stripe interaction or use test keys if possible) -> Verify subscription status update.
         - Sign in -> Manage Context Snippets (Create, Edit, Delete).
     - Requires setting up a consistent test environment:
         - Seed database with test data before runs (e.g., using a script).

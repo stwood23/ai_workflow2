@@ -1,4 +1,4 @@
-# Implementation Plan
+<!-- # Implementation Plan
 
 ---
 
@@ -351,4 +351,4 @@ This plan breaks the application into six milestones reflecting the specificatio
 5. **Prompt Improvement**
 6. **Workflow Automation**
 
-Each milestone is divided into small, focused steps so the code generation system can implement them incrementally without exceeding file-change limits. After completing all milestones in order, the application will provide a robust AI-driven workflow builder, including prompt templates, snippet management, multi-step workflows, and sophisticated real-time editing with dynamic prompt refinement.
+Each milestone is divided into small, focused steps so the code generation system can implement them incrementally without exceeding file-change limits. After completing all milestones in order, the application will provide a robust AI-driven workflow builder, including prompt templates, snippet management, multi-step workflows, and sophisticated real-time editing with dynamic prompt refinement. -->
