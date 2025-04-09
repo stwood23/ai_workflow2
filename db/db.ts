@@ -25,12 +25,12 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 
 // Import specific table definitions
-import { profilesTable, todosTable } from "@/db/schema"
+import { profilesTable, promptTemplatesTable } from "@/db/schema"
 
 // Construct the schema object Drizzle expects for query syntax
 const schema = {
   profiles: profilesTable,
-  todos: todosTable
+  promptTemplates: promptTemplatesTable
   // Add other table mappings here as needed
 }
 

@@ -78,6 +78,7 @@
         - `hooks/`: Custom React hooks (if needed).
         - `constants.ts`: Application constants.
         - `llm.ts`: Abstraction layer for interacting with different LLM APIs.
+          // TODO: Implement support for Anthropic and Grok APIs, including SDK/fetch logic and API key handling (ANTHROPIC_API_KEY, GROK_API_KEY).
         - `posthog.ts`: PostHog client instance helper (if needed beyond provider).
     - `prompts/`: Text files containing system prompts for LLM interactions (e.g., `optimize_prompt.txt`, `generate_title.txt`).
     - `public/`: Static assets (images, fonts if not using CDN).
@@ -502,7 +503,8 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
     - `retryWorkflowNodeAction(instanceId: string, nodeId: string, userId: string): Promise<ActionState<void>>`: Allows retrying a failed node. Resets node status and re-triggers processing for that node.
 
 ### 5.3 External API Integrations
-- **LLM Providers (OpenAI, Anthropic, Grok):** Interactions managed via `lib/llm.ts`. Requires API keys stored securely in `.env.local` (e.g., `OPENAI_API_KEY`). Ensure proper error handling for API calls (timeouts, rate limits, auth errors).
+- **LLM Providers (OpenAI, Anthropic, Grok):** Interactions managed via `lib/llm.ts`. Requires API keys stored securely in `.env.local` (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROK_API_KEY`). Ensure proper error handling for API calls (timeouts, rate limits, auth errors).
+  // TODO: Implement Anthropic and Grok logic in lib/llm.ts.
 - **Clerk:** Authentication handled via `@clerk/nextjs` middleware and `auth()` helper. No direct API calls needed typically.
 - **PostHog:** Interactions via `posthog-js` (client-side) or `posthog-node` (server-side). Requires PostHog API key and host in `.env.local` / `NEXT_PUBLIC_POSTHOG_KEY`.
 

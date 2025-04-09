@@ -32,4 +32,4 @@ export * from "./enums"
 // export * from "./documents";
 
 export * from "./profiles-schema"
-export * from "./todos-schema"
+export * from "./prompt-templates"

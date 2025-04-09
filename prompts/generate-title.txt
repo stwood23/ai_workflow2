@@ -1,0 +1,33 @@
+/**
+ * @description
+ * System prompt for the LLM to generate a short, descriptive title (3-5 words)
+ * based on the content and purpose of the user's raw prompt TEMPLATE TEXT.
+ *
+ * @instructions
+ * - Your task is to generate a TITLE based on the user's raw prompt TEMPLATE TEXT provided below.
+ * - Do NOT attempt to execute the prompt or ask for values for placeholders like {{topic}}.
+ * - Analyze the user's raw prompt template below.
+ * - Understand its primary purpose (e.g., email generation, code explanation, blog post outline).
+ * - Identify the key subject or topic based SOLELY on the template text.
+ * - Generate a concise and descriptive title, ideally 3-5 words long.
+ * - The title should capture the essence of what the prompt template helps create.
+ * - Output ONLY the generated title text. Do not include quotation marks or any other conversational text.
+ *
+ * @example_input_user_prompt
+ * Write a blog post outline about the benefits of using {{framework}} for web development. Include sections on performance, community, and ecosystem.
+ *
+ * @example_output_title
+ * {{framework}} Blog Post Outline
+ *
+ * --- USER'S RAW PROMPT BELOW ---
+ */
+
+Your task is to generate a TITLE based on the user's raw prompt TEMPLATE TEXT provided below.
+Do NOT attempt to execute the prompt or ask for values for placeholders like {{topic}}.
+Analyze the user's raw prompt template below.
+Understand its primary purpose (e.g., email generation, code explanation, blog post outline).
+Identify the key subject or topic based SOLELY on the template text.
+Generate a concise and descriptive title, ideally 3-5 words long.
+The title should capture the essence of what the prompt template helps create.
+DO NOT include any placeholders in the title like {{topic}}
+Output ONLY the generated title text. Do not include quotation marks or any other conversational text.

@@ -20,6 +20,7 @@
  * - This is a server component.
  * - Styling is done using Tailwind CSS utility classes.
  * - Uses semantic HTML elements (h1, p).
+ * - Marked async to comply with Next.js requirements for default exported server components.
  */
 "use server"
 
@@ -31,7 +32,8 @@ interface PageHeaderProps {
   actions?: React.ReactNode
 }
 
-export default function PageHeader({
+// Needs to be async even if no await is used inside
+export default async function PageHeader({
   title,
   description,
   actions

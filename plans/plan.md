@@ -45,7 +45,7 @@
     - **Step Dependencies**: Step 0.1
     - **User Instructions**: Ensure PostHog environment variables are set in `.env.local`.
 
-- [ ] Step 0.6: Configure LLM Abstraction
+- [x] Step 0.6: Configure LLM Abstraction
     - **Task**: Create a placeholder file for the LLM abstraction layer. Define basic types.
     - **Files**:
         - `lib/llm.ts`: Create file with placeholder comments for future LLM API interaction logic.
@@ -56,7 +56,7 @@
 
 ## Phase 1: Core Backend & Layout
 
-- [ ] Step 1.1: Verify & Update Protected Layout & Sidebar
+- [x] Step 1.1: Verify & Update Protected Layout & Sidebar
     - **Task**: Ensure the existing layout for authenticated users includes a functional sidebar meeting the spec requirements (links, icons, active state).
     - **Files**:
         - `app/(protected)/layout.tsx`: Verify it's marked `"use server"`, includes `<Sidebar />`.
@@ -66,8 +66,8 @@
     - **Step Dependencies**: Step 0.4
     - **User Instructions**: Ensure `lucide-react` is installed (`npm install lucide-react`). Verify the paths for the layout and sidebar files match your existing structure.
 
-- [ ] Step 1.2: Create Shared Utility Components
-    - **Task**: Implement basic shared utility components like PageHeader, LoadingSpinner, SkeletonLoader.
+- [x] Step 1.2: Create Shared Utility Components
+    - **Task**: Check to see if basic shared utility components like PageHeader, LoadingSpinner, SkeletonLoader exist. If not, Implement them.
     - **Files**:
         - `components/utilities/page-header.tsx`: Create component for consistent page titles.
         - `components/utilities/loading-spinner.tsx`: Create a loading spinner component.
@@ -78,7 +78,7 @@
 
 ## Phase 2: Milestone 1 - Prompt Template Management
 
-- [ ] Step 2.1: Define Prompt Template Schema & Actions
+- [x] Step 2.1: Define Prompt Template Schema & Actions
     - **Task**: Create the `prompt_templates` table schema and CRUD actions. Update `db.ts`.
     - **Files**:
         - `db/schema/prompt-templates.ts`: Define `promptTemplatesTable` schema.
@@ -109,6 +109,8 @@
         - `components/ui/button.tsx`: Ensure Shadcn Button component is added.
     - **Step Dependencies**: Step 1.1, Step 1.2, Step 2.1
     - **User Instructions**: Add Shadcn `Card` component (`npx shadcn-ui@latest add card`).
+
+**TODO before next step:** Implement Anthropic and Grok support in `lib/llm.ts`. This involves adding logic to `callLlm` (or a similar function) to handle API requests for these providers, including reading their specific API keys from environment variables (`ANTHROPIC_API_KEY`, `GROK_API_KEY`) and installing necessary SDKs if applicable. This is required for the LLM provider dropdown in the next step.
 
 - [ ] Step 2.4: Create Prompt Creation Modal
     - **Task**: Build the client component modal for creating and optimizing prompts.
