@@ -273,10 +273,12 @@ export async function optimizePromptWithLlm(
 ): Promise<string> {
   try {
     const systemPrompt = await readSystemPrompt("optimize-prompt.txt")
+    // Call the LLM with the raw prompt as user input and the file content as system prompt
     const result = await callLlm(rawPrompt, DEFAULT_INTERNAL_PROVIDER, {
-      systemPrompt: systemPrompt,
+      systemPrompt: systemPrompt, // Pass the file content as system prompt
       model: DEFAULT_INTERNAL_MODEL
     })
+
     if (!result.isSuccess) {
       throw new Error(result.message)
     }

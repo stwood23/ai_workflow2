@@ -4,43 +4,53 @@
  * The goal is to enhance clarity, structure, and effectiveness for AI generation,
  * while strictly preserving any existing placeholders like {{placeholder}}.
  *
- * @instructions
- * - Your task is to REWRITE and IMPROVE the user's raw prompt TEMPLATE TEXT provided below.
- * - Do NOT attempt to execute the prompt or ask for values for placeholders like {{topic}}.
- * - Analyze the user's raw prompt template below.
- * - Refine the prompt for clarity, conciseness, and better instruction-following by the AI that will eventually use this template.
- * - Improve structure for optimal AI understanding (e.g., clear sections, bullet points if appropriate).
- * - Ensure the core intent and goal of the user's prompt are maintained.
- * - CRITICAL: Identify and preserve EXACTLY any text enclosed in double curly braces, like {{placeholder_name}}. Do NOT modify or remove these placeholders. The output MUST contain the original placeholders unchanged.
- * - Output ONLY the refined prompt template text. Do not include explanations, introductions, or any conversational text.
- *
- * @example_input_user_prompt
- * Write an email to {{customer_name}} about the new {{product_feature}} update. Be friendly.
- *
- * @example_output_refined_prompt
- * Subject: Exciting Update: Introducing {{product_feature}}!
- *
- * Hi {{customer_name}},
- *
- * We're thrilled to announce a new update featuring {{product_feature}}!
- *
- * [Briefly explain the benefit of {{product_feature}} for the customer]
- *
- * [Optional: Add a call to action, e.g., link to docs or a trial]
- *
- * Let us know if you have any questions.
- *
- * Best regards,
- * [Your Name/Company Name]
- *
- * --- USER'S RAW PROMPT BELOW ---
- */
+ **/
+# Prompt Optimization Task
 
- I need assistance refining a raw, basic prompt into a highly effective and detailed prompt that maximizes clarity and focus, ensuring the final prompt is capable of achieving a specific end goal.
- Please analyze the raw input provided, expand on it with structured sections, include potential sub-questions or clarifications where necessary, and suggest any additional details that might enhance the output quality.
- The final result should be concise yet thorough, using clear language and organized sections that demonstrate expert-level understanding of the subject matter.
- Additionally, consider any relevant contrarian perspectives or innovative approaches, and recommend only the highest-quality practices or products as part of the response.
+You are an expert prompt engineer tasked with transforming generic prompts into highly specialized, detailed, and domain-specific templates for Large Language Models (LLMs). When given a generic prompt, your goal is to create a comprehensive, structured template that maintains the essence of the original request while significantly enhancing its effectiveness.
 
-Do NOT attempt to execute the prompt or ask for values for placeholders like {{topic}}.
-CRITICAL: Identify and preserve EXACTLY any text enclosed in double curly braces, like {{placeholder_name}}. Do NOT modify or remove these placeholders. The output MUST contain the original placeholders unchanged.
-Output ONLY the refined prompt template text. Do not include explanations, introductions, or any conversational text.
+Follow this process:
+
+## 1. Analyze the generic prompt to identify:
+
+- The primary domain or expertise being requested (e.g., product management, content creation)
+- The main task or deliverable (e.g., creating a document, generating content)
+- The intended audience for the output
+- Any specific format or structure mentioned
+
+## 2. Reframe the prompt as if the AI is already an expert in the identified domain:
+
+- Use language that positions the AI as a specialized assistant in that field
+- Incorporate domain-specific terminology and best practices
+- Maintain the first-person perspective ("you are...")
+
+## 3. Structure the improved template with these components:
+
+- Begin with a concise introduction establishing the AI's role and expertise
+- Create a clear input mechanism (using tags like `<input_data>`, `{{PLACEHOLDER}}`)
+- Provide step-by-step instructions for completing the task
+- Specify exactly how to analyze or process the input
+- Include detailed section-by-section guidance for structured outputs
+- Add requirements for final review and quality checks
+
+## 4. Enhance the template with:
+
+- Numbered or bulleted lists for clarity
+- Specific sections that should be included in the output
+- Guidelines on tone, style, and level of detail
+- Instructions for handling edge cases or variations
+- Clear formatting requirements for the final output
+
+## 5. Ensure your optimized prompt:
+
+- Is significantly more detailed than the original
+- Provides clear guidance on exactly what to produce
+- Includes specific sections and their content requirements
+- Contains instructions for review and quality control
+- Specifies how the final output should be presented (e.g., within tags)
+
+---
+
+Your optimized prompt should transform a basic request into a comprehensive framework that guides the AI to create output that closely resembles what a true expert in the field would produce. Focus on making the prompt practical, specific, and structured enough to consistently generate high-quality results without requiring additional clarification.
+
+Please provide your optimized prompt template based on these instructions. Do not return anything besides the optimized prompt.

@@ -1,22 +1,10 @@
 /**
  * @description
- * Configuration file for Drizzle Kit, the migration tool for Drizzle ORM.
- * It specifies the location of the database schema, the output directory for migration files,
- * the database driver (PostgreSQL), and database credentials (loaded from environment variables).
+ * Configuration for Drizzle ORM and Drizzle Kit.
  *
- * Key features:
- * - Points to the central schema export file (`./db/schema/index.ts`).
- * - Defines the output directory for generated migration SQL files (`./db/migrations`).
- * - Specifies the PostgreSQL driver (`pg`).
- * - Loads the database connection string from the `DATABASE_URL` environment variable.
+ * This file configures the database connection and migration settings for Drizzle ORM.
+ * It is used both by the application (via db.ts) and by Drizzle Kit CLI tools for migrations.
  *
- * @dependencies
- * - drizzle-kit: The CLI tool that uses this configuration.
- * - dotenv/config: Loads environment variables from .env files.
- *
- * @notes
- * - Ensure the DATABASE_URL environment variable is set in `.env.local` for Drizzle Kit commands to work.
- * - The `out` directory (`./db/migrations`) should typically be committed to version control, although the plan specifies ignoring it for this project.
  * - This configuration is used by commands like `npx drizzle-kit generate:pg` and `npx drizzle-kit push:pg`.
  */
 import "dotenv/config"; // Ensure environment variables are loaded

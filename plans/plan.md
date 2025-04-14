@@ -88,7 +88,7 @@
     - **Step Dependencies**: Step 0.3
     - **User Instructions**: Run `npx drizzle-kit push:pg` to sync schema changes.
 
-- [ ] Step 2.2: Implement LLM Actions for Prompts
+- [x] Step 2.2: Implement LLM Actions for Prompts
     - **Task**: Implement server actions for optimizing prompts and generating titles using the LLM abstraction layer.
     - **Files**:
         - `actions/llm-actions.ts`: Implement `optimizePromptAction` and `generateTitleAction`. These will call functions (to be defined later) in `lib/llm.ts`. Include `userId` checks (for rate limiting/feature gating later if needed).
@@ -98,7 +98,7 @@
     - **Step Dependencies**: Step 0.6, Step 2.1
     - **User Instructions**: None
 
-- [ ] Step 2.3: Create Prompts Page UI
+- [x] Step 2.3: Create Prompts Page UI
     - **Task**: Build the main page for listing prompt templates using server components and suspense.
     - **Files**:
         - `app/(protected)/prompts/page.tsx`: Server component. Fetch prompts using `getPromptTemplatesAction`. Use Suspense with a skeleton fallback. Render `PromptsList` and `CreatePromptButton`.
@@ -110,9 +110,10 @@
     - **Step Dependencies**: Step 1.1, Step 1.2, Step 2.1
     - **User Instructions**: Add Shadcn `Card` component (`npx shadcn-ui@latest add card`).
 
+[x] Step 2.3.1 - Todo
 **TODO before next step:** Implement Anthropic and Grok support in `lib/llm.ts`. This involves adding logic to `callLlm` (or a similar function) to handle API requests for these providers, including reading their specific API keys from environment variables (`ANTHROPIC_API_KEY`, `GROK_API_KEY`) and installing necessary SDKs if applicable. This is required for the LLM provider dropdown in the next step.
 
-- [ ] Step 2.4: Create Prompt Creation Modal
+- [x] Step 2.4: Create Prompt Creation Modal
     - **Task**: Build the client component modal for creating and optimizing prompts.
     - **Files**:
         - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Client component using Shadcn Dialog. Use `react-hook-form`. Include fields for raw prompt, optimized prompt, title, LLM provider dropdown. Implement logic for calling `optimizePromptAction`, `generateTitleAction`, and `createPromptTemplateAction`. Handle loading states and error messages (using `react-hot-toast` or similar). Refresh prompt list on success (`router.refresh()`).
@@ -124,7 +125,7 @@
     - **Step Dependencies**: Step 2.1, Step 2.2, Step 2.3
     - **User Instructions**: Add Shadcn `Dialog`, `Textarea`, `Input`, `Select`, `Form` (`npx shadcn-ui@latest add dialog textarea input select form`). Install `react-hook-form` (`npm install react-hook-form`) and a toast library like `react-hot-toast` (`npm install react-hot-toast`).
 
-- [ ] Step 2.5: Add Analytics for Prompts
+- [x] Step 2.5: Add Analytics for Prompts
     - **Task**: Integrate PostHog tracking for prompt creation and optimization.
     - **Files**:
         - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Call `posthog.capture('prompt_template_created')` on successful save. Call `posthog.capture('prompt_template_optimized')` when optimization action succeeds.
@@ -133,7 +134,7 @@
 
 ## Phase 3: Milestone 3 - Context Snippet Management
 
-- [ ] Step 3.1: Define Context Snippet Schema & Actions
+- [x] Step 3.1: Define Context Snippet Schema & Actions
     - **Task**: Create the `context_snippets` table schema and CRUD actions. Implement unique index constraint. Update `db.ts`.
     - **Files**:
         - `db/schema/context-snippets.ts`: Define `contextSnippetsTable` schema with `uniqueIndex` on `userId` and `name`.
