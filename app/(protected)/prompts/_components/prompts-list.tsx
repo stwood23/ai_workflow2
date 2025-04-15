@@ -31,16 +31,8 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import type { SelectPromptTemplate } from "@/db/schema"
 import { deletePromptTemplateAction } from "@/actions/db/prompts-actions"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, Loader2, Pencil, Trash2 } from "lucide-react"
+import { FileText, Loader2, Pencil, Trash2, Copy } from "lucide-react"
 import DeletePromptConfirmModal from "./delete-prompt-confirm-modal"
 import CreatePromptModal from "./create-prompt-modal"
 
@@ -82,9 +74,9 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
     })
   }
 
-  const handleGenerate = (promptId: string) => {
-    console.log("Generate document clicked:", promptId)
-    toast.info("Generate document functionality not yet implemented.")
+  const handleCopy = (promptId: string) => {
+    console.log("Copy prompt clicked:", promptId)
+    toast.info("Copy functionality not yet implemented.")
   }
 
   if (!initialPrompts || initialPrompts.length === 0) {
@@ -94,7 +86,7 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
           <FileText className="text-secondary-foreground size-10" />
         </div>
         <h3 className="text-xl font-semibold tracking-tight">No Prompts Yet</h3>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground-darker">
           Get started by creating your first prompt template.
         </p>
       </div>
@@ -103,57 +95,61 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <tbody className="divide-y divide-[#F0F0F7]">
         {initialPrompts.map(prompt => (
-          <Card key={prompt.id}>
-            <CardHeader>
-              <CardTitle className="truncate">{prompt.title}</CardTitle>
-              <CardDescription>
-                LLM: {prompt.defaultLlmProvider}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm">
-                {/* Placeholder for preview */}
-              </p>
-            </CardContent>
-            <CardFooter className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">
-                Updated: {new Date(prompt.updatedAt).toLocaleDateString()}
-              </span>
-              <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Generate Document"
-                  onClick={() => handleGenerate(prompt.id)}
+          <tr
+            key={prompt.id}
+            className="group transition-colors hover:bg-[#F7F8FC]"
+          >
+            <td className="px-6 py-5">
+              <div className="text-lg font-semibold text-[#23203A]">
+                {prompt.title}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="text-base font-medium text-[#2AB090]">
+                {prompt.defaultLlmProvider}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="text-muted-foreground-darker text-base">
+                {new Date(prompt.updatedAt).toLocaleDateString()}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleCopy(prompt.id)}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
+                  aria-label="Copy Prompt"
                 >
-                  <FileText className="size-4" />
-                </Button>
+                  <Copy size={18} />
+                </button>
                 <CreatePromptModal initialData={prompt} isEditMode={true}>
-                  <Button variant="ghost" size="icon" aria-label="Edit Prompt">
-                    <Pencil className="size-4" />
-                  </Button>
+                  <button
+                    className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
+                    aria-label="Edit Prompt"
+                  >
+                    <Pencil size={18} />
+                  </button>
                 </CreatePromptModal>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive"
-                  aria-label="Delete Prompt"
+                <button
                   onClick={() => handleDeleteClick(prompt.id)}
                   disabled={isDeleting && promptToDelete === prompt.id}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#ECECFC] hover:text-[#F67884] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Delete Prompt"
                 >
                   {isDeleting && promptToDelete === prompt.id ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-[18px] animate-spin" />
                   ) : (
-                    <Trash2 className="size-4" />
+                    <Trash2 size={18} />
                   )}
-                </Button>
+                </button>
               </div>
-            </CardFooter>
-          </Card>
+            </td>
+          </tr>
         ))}
-      </div>
+      </tbody>
 
       <DeletePromptConfirmModal
         isOpen={isConfirmModalOpen}

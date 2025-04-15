@@ -67,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   ]
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" className="bg-white" {...props}>
       <SidebarHeader>
         <div className="p-4 text-lg font-semibold">AI Flow</div>
       </SidebarHeader>
@@ -80,8 +80,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 item.isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-gradient-to-r from-[#22965A] to-[#2AB090] text-white"
+                  : "text-muted-foreground-darker hover:text-foreground"
               )}
             >
               <item.icon className="size-4" />

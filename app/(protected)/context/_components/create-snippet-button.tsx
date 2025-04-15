@@ -27,12 +27,7 @@ export default function CreateSnippetButton() {
   }
 
   return (
-    <Button
-      onClick={handleClick}
-      className={cn(
-        "focus:ring-offset-background bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-600 hover:to-violet-600 focus:ring-indigo-500"
-      )}
-    >
+    <Button onClick={handleClick}>
       <PlusCircle className="mr-2 size-4" />
       Create Context Snippet
     </Button>

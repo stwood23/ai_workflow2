@@ -20,11 +20,14 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"]
+})
 
 export const metadata: Metadata = {
-  title: "Mckay's App Template",
-  description: "A full-stack web app template."
+  title: "AI Prompt Engine",
+  description: "Create and optimize AI prompts with ease."
 }
 
 export default async function RootLayout({
@@ -46,7 +49,8 @@ export default async function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body
           className={cn(
-            "bg-background mx-auto min-h-screen w-full scroll-smooth antialiased",
+            "bg-background text-foreground mx-auto min-h-screen w-full scroll-smooth antialiased",
+            "selection:bg-primary/10 selection:text-primary",
             inter.className
           )}
         >

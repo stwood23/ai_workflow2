@@ -1,25 +1,13 @@
-"use server"
+"use client"
 
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { SelectContextSnippet } from "@/db/schema"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table"
+import { deleteContextSnippetAction } from "@/actions/db/context-snippets-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+import { FileText, Copy, Pencil, Trash2, Loader2 } from "lucide-react"
 
 /**
  * @description
@@ -31,10 +19,8 @@ import {
  *
  * @dependencies
  * - @/db/schema: SelectContextSnippet type.
- * - @/components/ui/table: Shadcn Table components.
  * - @/components/ui/badge: Shadcn Badge component.
  * - @/components/ui/button: Shadcn Button component.
- * - @/components/ui/dropdown-menu: Shadcn DropdownMenu components.
  * - lucide-react: For the MoreHorizontal icon.
  *
  * @notes
@@ -47,87 +33,136 @@ interface SnippetsListProps {
   snippets: SelectContextSnippet[]
 }
 
-export default async function SnippetsList({ snippets }: SnippetsListProps) {
-  const truncateContent = (content: string, maxLength = 100) => {
+export default function SnippetsList({ snippets }: SnippetsListProps) {
+  const [isDeleting, startDeleteTransition] = useTransition()
+  const router = useRouter()
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null)
+
+  const truncateContent = (content: string, maxLength = 50) => {
     if (content.length <= maxLength) {
       return content
     }
     return content.substring(0, maxLength) + "..."
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString()
+  }
+
+  const handleDeleteClick = (snippetId: string) => {
+    setSnippetToDelete(snippetId)
+    setIsConfirmModalOpen(true)
+    alert("Delete confirmation modal placeholder.")
+  }
+
+  const handleConfirmDelete = () => {
+    if (!snippetToDelete) return
+
+    startDeleteTransition(async () => {
+      try {
+        const result = await deleteContextSnippetAction(snippetToDelete)
+        if (result.isSuccess) {
+          toast.success(result.message)
+          router.refresh()
+          setIsConfirmModalOpen(false)
+          setSnippetToDelete(null)
+        } else {
+          toast.error(result.message || "Failed to delete snippet.")
+        }
+      } catch (error) {
+        console.error("Error deleting snippet:", error)
+        toast.error("An unexpected error occurred while deleting.")
+        setIsConfirmModalOpen(false)
+        setSnippetToDelete(null)
+      }
     })
   }
 
+  const handleCopy = (snippetId: string) => {
+    console.log("Copy snippet clicked:", snippetId)
+    toast.info("Copy snippet functionality not yet implemented.")
+  }
+
+  const handleEdit = (snippetId: string) => {
+    console.log("Edit snippet clicked:", snippetId)
+    toast.info("Edit snippet functionality not yet implemented.")
+  }
+
+  if (!snippets || snippets.length === 0) {
+    return (
+      <tbody className="divide-y divide-[#F0F0F7]">
+        <tr className="hover:bg-[#F7F8FC]">
+          <td
+            colSpan={4}
+            className="text-muted-foreground-darker px-6 py-10 text-center"
+          >
+            <div className="flex flex-col items-center">
+              <FileText size={40} className="mb-3" />
+              No context snippets found. Create one to get started!
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    )
+  }
+
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">Name</TableHead>
-            <TableHead>Content Preview</TableHead>
-            <TableHead className="w-[150px]">Created At</TableHead>
-            <TableHead className="w-[150px]">Updated At</TableHead>
-            <TableHead className="w-[100px] text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {snippets.length > 0 ? (
-            snippets.map(snippet => (
-              <TableRow key={snippet.id}>
-                <TableCell>
-                  <Badge variant="outline">{snippet.name}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {truncateContent(snippet.content)}
-                </TableCell>
-                <TableCell>{formatDate(snippet.createdAt)}</TableCell>
-                <TableCell>{formatDate(snippet.updatedAt)}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="size-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          alert(`Edit action for ${snippet.name} coming soon!`)
-                        }
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          alert(
-                            `Delete action for ${snippet.name} coming soon!`
-                          )
-                        }
-                        className="text-red-600"
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
-                No context snippets found. Create one to get started!
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <tbody className="divide-y divide-[#F0F0F7]">
+        {snippets.map(snippet => (
+          <tr
+            key={snippet.id}
+            className="group transition-colors hover:bg-[#F7F8FC]"
+          >
+            <td className="px-6 py-5">
+              <div className="text-lg font-semibold text-[#23203A]">
+                {snippet.name}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="text-muted-foreground-darker text-base">
+                {truncateContent(snippet.content)}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="text-muted-foreground-darker text-base">
+                {formatDate(snippet.updatedAt)}
+              </div>
+            </td>
+            <td className="px-6 py-5">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleCopy(snippet.id)}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
+                  aria-label="Copy Snippet"
+                >
+                  <Copy size={18} />
+                </button>
+                <button
+                  onClick={() => handleEdit(snippet.id)}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
+                  aria-label="Edit Snippet"
+                >
+                  <Pencil size={18} />
+                </button>
+                <button
+                  onClick={() => handleDeleteClick(snippet.id)}
+                  disabled={isDeleting && snippetToDelete === snippet.id}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#ECECFC] hover:text-[#F67884] disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Delete Snippet"
+                >
+                  {isDeleting && snippetToDelete === snippet.id ? (
+                    <Loader2 className="size-[18px] animate-spin" />
+                  ) : (
+                    <Trash2 size={18} />
+                  )}
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </>
   )
 }

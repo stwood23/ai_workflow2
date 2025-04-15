@@ -179,7 +179,9 @@ const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "bg-sidebar text-sidebar-foreground flex h-full w-[--sidebar-width] flex-col",
+            "bg-sidebar text-sidebar-foreground shadow-card flex h-full w-[--sidebar-width] flex-col",
+            side === "left" && "rounded-r-xl",
+            side === "right" && "rounded-l-xl",
             className
           )}
           ref={ref}
@@ -196,7 +198,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="bg-sidebar text-sidebar-foreground w-[--sidebar-width] p-0 [&>button]:hidden"
+            className="bg-sidebar text-sidebar-foreground shadow-card w-[--sidebar-width] p-0 [&>button]:hidden"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE
@@ -204,53 +206,83 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <div className="flex size-full flex-col">{children}</div>
+            {children}
           </SheetContent>
         </Sheet>
       )
     }
 
-    return (
-      <div
-        ref={ref}
-        className="text-sidebar-foreground group peer hidden md:block"
-        data-state={state}
-        data-collapsible={state === "collapsed" ? collapsible : ""}
-        data-variant={variant}
-        data-side={side}
-      >
-        {/* This is what handles the sidebar gap on desktop */}
+    if (variant === "floating") {
+      return (
         <div
+          data-sidebar="sidebar"
+          data-state={state}
           className={cn(
-            "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
-          )}
-        />
-        <div
-          className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
+            "relative hidden transition-[width]",
+            {
+              "lg:flex lg:w-[--sidebar-width]": state === "expanded",
+              "lg:flex lg:w-[--sidebar-width-icon]": state === "collapsed"
+            },
             className
           )}
+          ref={ref}
           {...props}
         >
           <div
-            data-sidebar="sidebar"
-            className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow"
+            className={cn(
+              "bg-sidebar/60 text-sidebar-foreground shadow-card fixed inset-y-0 flex w-[--sidebar-width] flex-col backdrop-blur-sm",
+              side === "left" && "left-0 rounded-r-xl border-r",
+              side === "right" && "right-0 rounded-l-xl border-l"
+            )}
           >
             {children}
           </div>
         </div>
+      )
+    }
+
+    if (variant === "inset") {
+      return (
+        <div
+          data-sidebar="sidebar"
+          data-variant="inset"
+          data-state={state}
+          className={cn(
+            "bg-sidebar text-sidebar-foreground shadow-card relative hidden h-screen flex-col justify-between",
+            side === "left" && "rounded-r-xl border-r",
+            side === "right" && "rounded-l-xl border-l",
+            {
+              "lg:flex lg:w-[--sidebar-width]": state === "expanded",
+              "lg:flex lg:w-[--sidebar-width-icon]": state === "collapsed"
+            },
+            className
+          )}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </div>
+      )
+    }
+
+    return (
+      <div
+        data-sidebar="sidebar"
+        data-state={state}
+        className={cn(
+          "bg-sidebar text-sidebar-foreground shadow-card relative hidden h-full flex-col",
+          side === "left" && "rounded-r-xl border-r",
+          side === "right" && "rounded-l-xl border-l",
+          {
+            "lg:flex lg:w-[--sidebar-width]": state === "expanded",
+            "lg:flex lg:w-[--sidebar-width-icon]": state === "collapsed"
+          },
+          className
+        )}
+        ref={ref}
+        {...props}
+      >
+        {children}
       </div>
     )
   }
@@ -484,17 +516,106 @@ const SidebarGroupContent = React.forwardRef<
 SidebarGroupContent.displayName = "SidebarGroupContent"
 
 const SidebarMenu = React.forwardRef<
-  HTMLUListElement,
-  React.ComponentProps<"ul">
->(({ className, ...props }, ref) => (
-  <ul
-    ref={ref}
-    data-sidebar="menu"
-    className={cn("flex w-full min-w-0 flex-col gap-1", className)}
-    {...props}
-  />
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
+  <div ref={ref} className={cn("flex-1 overflow-auto", className)} {...props}>
+    <div className="flex flex-col gap-2 px-2 py-4">{children}</div>
+  </div>
 ))
 SidebarMenu.displayName = "SidebarMenu"
+
+const sidebarNavLinkClass = cva(
+  "focus-visible:ring-ring group flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default:
+          "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-offset-sidebar focus-visible:bg-sidebar-accent",
+        ghost:
+          "text-sidebar-foreground/60 hover:text-sidebar-foreground focus-visible:ring-offset-background hover:bg-transparent"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+)
+
+const SidebarItem = React.forwardRef<
+  HTMLAnchorElement,
+  React.AnchorHTMLAttributes<HTMLAnchorElement> &
+    VariantProps<typeof sidebarNavLinkClass> & {
+      active?: boolean
+      loading?: boolean
+      endContent?: React.ReactNode
+      icon?: React.ReactNode
+      asChild?: boolean
+    }
+>(
+  (
+    {
+      active = false,
+      loading = false,
+      className,
+      endContent,
+      children,
+      icon,
+      variant,
+      asChild = false,
+      ...props
+    },
+    ref
+  ) => {
+    const { state } = useSidebar()
+    const Comp = asChild ? Slot : "a"
+
+    if (loading) {
+      return (
+        <div
+          className={cn(
+            sidebarNavLinkClass({ variant }),
+            "animate-pulse justify-between",
+            className
+          )}
+        >
+          <div className="flex items-center gap-x-3">
+            <Skeleton className="size-5" />
+            {state === "expanded" && <Skeleton className="h-4 w-20" />}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Comp
+            ref={ref}
+            className={cn(
+              sidebarNavLinkClass({ variant }),
+              "justify-between",
+              active &&
+                "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground focus-visible:ring-offset-sidebar-primary",
+              className
+            )}
+            {...props}
+          >
+            <div className="flex items-center gap-x-3">
+              {icon}
+              {state === "expanded" && <span>{children}</span>}
+            </div>
+            {state === "expanded" && endContent}
+          </Comp>
+        </TooltipTrigger>
+        {state === "collapsed" && (
+          <TooltipContent side="right">{children}</TooltipContent>
+        )}
+      </Tooltip>
+    )
+  }
+)
+SidebarItem.displayName = "SidebarItem"
 
 const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,

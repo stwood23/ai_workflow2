@@ -18,27 +18,39 @@
 "use server"
 
 import { Suspense } from "react"
-import PageHeader from "@/components/utilities/page-header"
-import CreateSnippetButton from "./_components/create-snippet-button"
+// import PageHeader from "@/components/utilities/page-header" // Removed
+import CreateSnippetButton from "./_components/create-snippet-button" // Keep for now, will be wrapped later
 import SnippetsListFetcher from "./_components/snippets-list-fetcher"
 import SnippetsListSkeleton from "./_components/snippets-list-skeleton"
+import { Button } from "@/components/ui/button" // Need Button for styling
+import { PlusCircle } from "lucide-react" // Need Icon
 
 export default async function ContextPage() {
+  // Return content directly, no outer layout div needed
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <PageHeader
-          title="Context Snippets"
-          description="Manage reusable pieces of context for your prompts."
-        />
-        <div className="flex items-center space-x-2">
-          <CreateSnippetButton />
-        </div>
+    <>
+      {/* Header Section */}
+      <div className="mb-10 flex items-center justify-between">
+        <h1 className="text-4xl font-bold text-[#23203A]">Context Snippets</h1>
+
+        {/* TODO: Wrap this Button in a CreateSnippetModal component later */}
+        {/* Remove rounded-full from className */}
+        <Button className="bg-gradient-to-r from-[#22965A] to-[#2AB090] px-8 py-6 text-base font-bold shadow-[0_4px_16px_rgba(34,150,90,0.16)] hover:shadow-[0_8px_32px_rgba(34,150,90,0.24)]">
+          <PlusCircle size={20} className="mr-2" />
+          Create New Snippet
+          {/* <CreateSnippetButton /> */}
+          {/* Replace with styled Button, keep modal logic separate */}
+        </Button>
       </div>
 
-      <Suspense fallback={<SnippetsListSkeleton />}>
-        <SnippetsListFetcher />
-      </Suspense>
-    </div>
+      {/* Table Layout Container */}
+      <div className="rounded-3xl bg-white p-6 shadow-[0_8px_32px_rgba(84,77,227,0.08)]">
+        {/* Suspense for the table content */}
+        <Suspense fallback={<SnippetsListSkeleton />}>
+          {/* The Fetcher will need to render the table structure */}
+          <SnippetsListFetcher />
+        </Suspense>
+      </div>
+    </>
   )
 }

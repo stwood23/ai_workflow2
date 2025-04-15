@@ -33,14 +33,14 @@
 
 import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
+import { PlusCircle, AlertTriangle } from "lucide-react"
 
 import { getPromptTemplatesAction } from "@/actions/db/prompts-actions"
 import PromptsList from "./_components/prompts-list"
 import PromptsListSkeleton from "./_components/prompts-list-skeleton"
-import CreatePromptButton from "./_components/create-prompt-button"
-import PageHeader from "@/components/utilities/page-header"
+import CreatePromptModal from "./_components/create-prompt-modal"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 // Internal component to fetch data, allowing the main page component
 // to remain synchronous for Suspense integration.
@@ -58,7 +58,31 @@ async function PromptsListFetcher() {
     )
   }
 
-  return <PromptsList initialPrompts={result.data} />
+  // Render the table structure inside the fetcher when data is ready
+  return (
+    <div className="overflow-hidden rounded-2xl">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-[#F0F0F7] text-left">
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              Template Name
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              LLM
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              Last Updated
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-left text-lg font-medium">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        {/* Pass data to PromptsList to render table body */}
+        <PromptsList initialPrompts={result.data} />
+      </table>
+    </div>
+  )
 }
 
 // Make the component async to correctly await auth()
@@ -67,31 +91,41 @@ export default async function PromptsPage() {
 
   // Ensure user is authenticated
   if (!userId) {
-    // In a real application, you might redirect or show a more specific auth error
-    // For now, returning null or a simple message suffices.
+    // Return only the Alert part, layout is handled by layout.tsx
     return (
-      <div className="p-4">
-        <Alert variant="destructive">
-          <AlertTriangle className="size-4" />
-          <AlertTitle>Authentication Error</AlertTitle>
-          <AlertDescription>
-            Please sign in to view your prompts.
-          </AlertDescription>
-        </Alert>
-      </div>
+      <Alert variant="destructive">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Authentication Error</AlertTitle>
+        <AlertDescription>
+          Please sign in to view your prompts.
+        </AlertDescription>
+      </Alert>
     )
   }
 
+  // Return content directly, no outer layout div needed
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <PageHeader title="Prompt Templates" />
-        <CreatePromptButton />
+    <>
+      {/* Header Section */}
+      <div className="mb-10 flex items-center justify-between">
+        <h1 className="text-4xl font-bold text-[#23203A]">Prompt Templates</h1>
+
+        {/* Use CreatePromptModal directly and style the Button */}
+        <CreatePromptModal>
+          <Button className="bg-gradient-to-r from-[#22965A] to-[#2AB090] px-8 py-6 text-base font-bold shadow-[0_4px_16px_rgba(34,150,90,0.16)] hover:shadow-[0_8px_32px_rgba(34,150,90,0.24)]">
+            <PlusCircle size={20} className="mr-2" />
+            Create New Prompt
+          </Button>
+        </CreatePromptModal>
       </div>
 
-      <Suspense fallback={<PromptsListSkeleton />}>
-        <PromptsListFetcher /> {/* No userId prop needed */}
-      </Suspense>
-    </div>
+      {/* Table Layout Container */}
+      <div className="rounded-3xl bg-white p-6 shadow-[0_8px_32px_rgba(84,77,227,0.08)]">
+        {/* Suspense for the table content */}
+        <Suspense fallback={<PromptsListSkeleton />}>
+          <PromptsListFetcher /> {/* Renders table structure */}
+        </Suspense>
+      </div>
+    </>
   )
 }

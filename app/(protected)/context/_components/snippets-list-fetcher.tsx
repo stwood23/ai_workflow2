@@ -4,7 +4,8 @@ import { Suspense } from "react"
 import { auth } from "@clerk/nextjs/server"
 import { getContextSnippetsAction } from "@/actions/db/context-snippets-actions"
 import SnippetsList from "./snippets-list"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertTriangle } from "lucide-react"
 
 /**
  * @description
@@ -16,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
  * - @clerk/nextjs/server: For getting the userId (used internally by action).
  * - @/actions/db/context-snippets-actions: Action to fetch snippets.
  * - ./snippets-list: Component to display the snippets.
- * - @/components/ui/card: Used for displaying error messages.
+ * - @/components/ui/alert: Used for displaying error messages.
  *
  * @notes
  * - Handles the case where the user is not authenticated (via middleware).
@@ -35,20 +36,39 @@ export default async function SnippetsListFetcher() {
 
   if (!snippetsResult.isSuccess) {
     return (
-      <Card className="border-destructive mt-4">
-        <CardHeader>
-          <CardTitle className="text-destructive">
-            Error Loading Snippets
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{snippetsResult.message}</p>
-          <p>Please try refreshing the page.</p>
-        </CardContent>
-      </Card>
+      <Alert variant="destructive" className="mt-4">
+        <AlertTriangle className="size-4" />
+        <AlertTitle>Error Loading Snippets</AlertTitle>
+        <AlertDescription>
+          {snippetsResult.message} Please try refreshing the page.
+        </AlertDescription>
+      </Alert>
     )
   }
 
-  // Handles the empty state within the SnippetsList component
-  return <SnippetsList snippets={snippetsResult.data} />
+  // Render the table structure and pass data to SnippetsList for the body
+  return (
+    <div className="overflow-hidden rounded-2xl">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-[#F0F0F7] text-left">
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              Snippet Name
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              Content Preview
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
+              Last Updated
+            </th>
+            <th className="text-muted-foreground-darker px-6 py-5 text-left text-lg font-medium">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        {/* SnippetsList will render the tbody */}
+        <SnippetsList snippets={snippetsResult.data} />
+      </table>
+    </div>
+  )
 }

@@ -28,9 +28,9 @@ export default async function ProtectedLayout({
     <SidebarProvider>
       <div className="flex h-screen w-full flex-row overflow-hidden">
         <AppSidebar />
-        <main className="bg-background flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
+        <div className="flex-1 overflow-auto bg-[#F7F8FC] p-8 pl-12">
           {children}
-        </main>
+        </div>
       </div>
     </SidebarProvider>
   )

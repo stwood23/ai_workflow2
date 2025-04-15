@@ -47,11 +47,13 @@ export default function CreatePromptButton() {
     // The modal handles its own state now via the DialogTrigger
     <CreatePromptModal>
       <Button
-        // onClick={handleClick} // Add onClick in Step 2.4
-        className={cn(
-          // Applying the gradient style as per projectfile.md
-          "focus:ring-offset-background bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-600 hover:to-violet-600 focus:ring-indigo-500"
-        )}
+      // onClick={handleClick} // Add onClick in Step 2.4
+      // Removed className prop, will use default variant
+      // className={cn(
+      //   // Applying the gradient style as per projectfile.md
+      //   // "focus:ring-offset-background bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-600 hover:to-violet-600 focus:ring-indigo-500"
+      //   "button-primary" // Use the global button style
+      // )}
       >
         <PlusCircle className="mr-2 size-4" />
         Create New Prompt
