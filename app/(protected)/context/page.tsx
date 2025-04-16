@@ -19,11 +19,12 @@
 
 import { Suspense } from "react"
 // import PageHeader from "@/components/utilities/page-header" // Removed
-import CreateSnippetButton from "./_components/create-snippet-button" // Keep for now, will be wrapped later
+import CreateSnippetButton from "./_components/create-snippet-button" // Ensure this is imported
 import SnippetsListFetcher from "./_components/snippets-list-fetcher"
 import SnippetsListSkeleton from "./_components/snippets-list-skeleton"
-import { Button } from "@/components/ui/button" // Need Button for styling
-import { PlusCircle } from "lucide-react" // Need Icon
+// Remove unused Button and PlusCircle imports if only used in the button below
+// import { Button } from "@/components/ui/button"
+// import { PlusCircle } from "lucide-react"
 
 export default async function ContextPage() {
   // Return content directly, no outer layout div needed
@@ -33,14 +34,16 @@ export default async function ContextPage() {
       <div className="mb-10 flex items-center justify-between">
         <h1 className="text-4xl font-bold text-[#23203A]">Context Snippets</h1>
 
-        {/* TODO: Wrap this Button in a CreateSnippetModal component later */}
-        {/* Remove rounded-full from className */}
+        {/* Render the actual CreateSnippetButton component */}
+        <CreateSnippetButton />
+
+        {/* Remove the standalone Button */}
+        {/*
         <Button className="bg-gradient-to-r from-[#22965A] to-[#2AB090] px-8 py-6 text-base font-bold shadow-[0_4px_16px_rgba(34,150,90,0.16)] hover:shadow-[0_8px_32px_rgba(34,150,90,0.24)]">
           <PlusCircle size={20} className="mr-2" />
           Create New Snippet
-          {/* <CreateSnippetButton /> */}
-          {/* Replace with styled Button, keep modal logic separate */}
         </Button>
+        */}
       </div>
 
       {/* Table Layout Container */}

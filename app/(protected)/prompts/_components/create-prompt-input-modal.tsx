@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, ReactNode } from "react"
+import { useState, useTransition, ReactNode, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -56,6 +56,9 @@ export default function CreatePromptInputModal({
 }: CreatePromptInputModalProps) {
   // State for this modal
   const [isInputModalOpen, setIsInputModalOpen] = useState(false)
+  const [lastSubmittedRawPrompt, setLastSubmittedRawPrompt] = useState<
+    string | null
+  >(null) // State to store the last submitted prompt
 
   // State for loading modal
   const [isOptimizing, startOptimizeTransition] = useTransition()
@@ -77,7 +80,23 @@ export default function CreatePromptInputModal({
   const handleOptimize = (values: InputFormValues) => {
     const rawPromptValue = values.rawPrompt // Already validated by form
 
+    // Check if the prompt is the same as the last successful one and we have data
+    if (
+      rawPromptValue === lastSubmittedRawPrompt &&
+      optimizationData &&
+      !isOptimizing // Ensure we are not already optimizing
+    ) {
+      toast.info("Using previously optimized result.")
+      setIsInputModalOpen(false)
+      setIsRefineModalOpen(true) // Reopen refine modal with existing data
+      return // Skip API calls
+    }
+
+    // If different or no previous data, proceed with optimization
     startOptimizeTransition(async () => {
+      // Update the last submitted prompt *before* starting async work
+      setLastSubmittedRawPrompt(rawPromptValue)
+
       // Close input modal, open loading modal
       setIsInputModalOpen(false)
       // Note: isOptimizing state is automatically true during transition
@@ -128,13 +147,15 @@ export default function CreatePromptInputModal({
           toast.success(
             "Prompt optimized and title generated! Review and save."
           )
-          setOptimizationData({
+          // Store the complete data including the rawPrompt that generated it
+          const newOptimizationData = {
             rawPrompt: rawPromptValue,
             optimizedPrompt: optimizedPrompt,
             title: title
-          })
+          }
+          setOptimizationData(newOptimizationData)
           setIsRefineModalOpen(true) // Open refine modal
-          form.reset() // Reset input form for next time
+          // Don't reset form here, keep rawPrompt in case user goes back
         } else {
           // If failed, show error toasts (already done above)
           // Re-open the input modal? Or just let user close trigger?
@@ -151,26 +172,53 @@ export default function CreatePromptInputModal({
         toast.error("An unexpected error occurred during optimization.")
         // Optionally re-open input modal on unexpected errors
         // setIsInputModalOpen(true)
+        // Clear last submitted prompt on error so next attempt forces API call
+        setLastSubmittedRawPrompt(null)
+        // Clear potentially partial optimization data
+        setOptimizationData(null)
       }
       // isOptimizing automatically becomes false after transition ends
     })
   }
 
-  // Reset form when input modal closes
+  // Reset form only when opening via trigger (not on back navigation)
   const handleInputOpenChange = (open: boolean) => {
     setIsInputModalOpen(open)
-    if (!open) {
-      form.reset()
+    if (open && !isRefineModalOpen) {
+      // Only reset fully if opening fresh (not coming back from refine)
+      form.reset({ rawPrompt: "" }) // Reset to empty
+      setLastSubmittedRawPrompt(null) // Clear cache trigger
+      setOptimizationData(null) // Clear cached data
+    } else if (!open) {
+      // If closing completely (not navigating), maybe reset? Or handle in trigger?
+      // Let's keep the state for now, trigger opening handles reset.
     }
   }
 
-  // Handler for when the refine modal closes
+  // Handler for when the refine modal closes (e.g., Save or Cancel/Back)
   const handleRefineOpenChange = (open: boolean) => {
     setIsRefineModalOpen(open)
-    if (!open) {
-      setOptimizationData(null) // Clear data when refine modal closes
+    if (!open && !isInputModalOpen) {
+      // If refine is closing AND input is not opening (i.e., not Back)
+      // Clear optimization data to ensure fresh start next time
+      setOptimizationData(null)
+      setLastSubmittedRawPrompt(null)
     }
+    // If refine is closing because 'Back' was pressed, handleNavigateBackFromRefine takes care of state
   }
+
+  // Function to handle navigating back from Refine to Input
+  const handleNavigateBackFromRefine = useCallback(() => {
+    setIsRefineModalOpen(false) // Close refine modal
+    setIsInputModalOpen(true) // Open input modal
+    // Set the form value to the last submitted prompt
+    if (lastSubmittedRawPrompt) {
+      form.setValue("rawPrompt", lastSubmittedRawPrompt, {
+        shouldValidate: true // Optional: re-validate
+      })
+    }
+    // No need to reset optimizationData or lastSubmittedRawPrompt here
+  }, [form, lastSubmittedRawPrompt]) // Dependencies
 
   return (
     <>
@@ -232,13 +280,14 @@ export default function CreatePromptInputModal({
       {/* Loading Modal - controlled by optimizing transition state */}
       <OptimizingLoadingModal isOpen={isOptimizing} />
 
-      {/* Refine Modal - controlled by its own state */}
+      {/* Refine Modal - controlled by its own state, pass onBack handler */}
       {optimizationData && (
         <CreatePromptRefineModal
           isOpen={isRefineModalOpen}
           onOpenChange={handleRefineOpenChange}
-          initialData={optimizationData} // Pass the fetched data
+          initialData={optimizationData} // Pass the fetched/cached data
           isEditMode={false} // Always false when coming from input modal
+          onBack={handleNavigateBackFromRefine} // Pass the back navigation handler
         />
       )}
     </>

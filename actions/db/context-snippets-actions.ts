@@ -37,7 +37,8 @@ import {
 } from "@/db/schema"
 import { ActionState } from "@/types"
 
-const SNIPPET_NAME_REGEX = /^@\w+$/
+// Updated regex to allow dashes after the leading '@'
+const SNIPPET_NAME_REGEX = /^@[\w-]+$/
 
 // --- Create Actions ---
 
@@ -50,11 +51,12 @@ export async function createContextSnippetAction(
     return { isSuccess: false, message: "Unauthorized" }
   }
 
-  // Validate name format
+  // Validate name format (now includes dashes)
   if (!SNIPPET_NAME_REGEX.test(data.name)) {
     return {
       isSuccess: false,
-      message: "Invalid snippet name format. Must start with '@' and contain only letters, numbers, or underscores."
+      // Updated error message
+      message: "Invalid snippet name format. Must start with '@' and contain only letters, numbers, underscores, or dashes."
     }
   }
 
@@ -212,11 +214,12 @@ export async function updateContextSnippetAction(
     return { isSuccess: false, message: "Snippet ID is required" }
   }
 
-  // Validate name format if provided
+  // Validate name format if provided (now includes dashes)
   if (data.name && !SNIPPET_NAME_REGEX.test(data.name)) {
     return {
       isSuccess: false,
-      message: "Invalid snippet name format. Must start with '@' and contain only letters, numbers, or underscores."
+      // Updated error message
+      message: "Invalid snippet name format. Must start with '@' and contain only letters, numbers, underscores, or dashes."
     }
   }
 
@@ -247,7 +250,7 @@ export async function updateContextSnippetAction(
     if (
       error instanceof PostgresError &&
       error.code === "23505" &&
-      data.name
+      data.name // Check if the error is related to the name field being updated
     ) {
       return {
         isSuccess: false,
