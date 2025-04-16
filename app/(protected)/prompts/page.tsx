@@ -68,7 +68,7 @@ async function PromptsListFetcher() {
               Template Name
             </th>
             <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
-              LLM
+              Model
             </th>
             <th className="text-muted-foreground-darker px-6 py-5 text-lg font-medium">
               Last Updated

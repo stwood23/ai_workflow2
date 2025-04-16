@@ -22,7 +22,6 @@
  * - Placeholders like `{{placeholder}}` should be stored within the `optimizedPrompt` text.
  */
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
-import { llmProviderEnum } from "./enums"
 
 export const promptTemplatesTable = pgTable("prompt_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -30,7 +29,7 @@ export const promptTemplatesTable = pgTable("prompt_templates", {
   title: text("title").notNull(),
   rawPrompt: text("raw_prompt"), // Initial user input, optional
   optimizedPrompt: text("optimized_prompt").notNull(), // The prompt used for generation, includes {{placeholders}}
-  defaultLlmProvider: llmProviderEnum("default_llm_provider").notNull(),
+  modelId: text("model_id").notNull(), // Specific model identifier (e.g., gpt-4o)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

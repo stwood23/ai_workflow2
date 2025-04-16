@@ -82,7 +82,6 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { llmProviderEnum } from "@/db/schema/enums"
 import {
   optimizePromptAction,
   generateTitleAction
@@ -94,6 +93,19 @@ import {
 import { cn } from "@/lib/utils"
 import { SelectPromptTemplate } from "@/db/schema"
 
+// Define the available models
+const availableModels = [
+  { id: "gpt-4o", name: "OpenAI - GPT-4o" },
+  { id: "gpt-4o-mini", name: "OpenAI - GPT-4o Mini" },
+  { id: "gpt-4-turbo", name: "OpenAI - GPT-4 Turbo" },
+  { id: "claude-3-5-sonnet-20240620", name: "Anthropic - Claude 3.5 Sonnet" },
+  { id: "claude-3-opus-20240229", name: "Anthropic - Claude 3 Opus" },
+  { id: "grok-1.5", name: "xAI - Grok 1.5" }
+] as const // Use 'as const' for stricter typing of IDs
+
+// Extract model IDs for Zod validation
+const modelIds = availableModels.map(m => m.id)
+
 // Define the form schema using Zod
 // Raw prompt is optional in edit mode, but always present in create mode flow
 const formSchema = z.object({
@@ -104,7 +116,13 @@ const formSchema = z.object({
   title: z.string().min(3, {
     message: "Title must be at least 3 characters."
   }),
-  defaultLlmProvider: z.enum(llmProviderEnum.enumValues)
+  // Change from enum to string validation against model IDs
+  modelId: z
+    .string()
+    .refine(val => modelIds.includes(val as (typeof modelIds)[number]), {
+      message: "Invalid model selected."
+    })
+  // defaultLlmProvider: z.enum(llmProviderEnum.enumValues) // Remove old provider validation
 })
 
 export type CreatePromptFormValues = z.infer<typeof formSchema>
@@ -137,7 +155,9 @@ export default function CreatePromptModal({
       rawPrompt: initialData?.rawPrompt || "", // Use initial raw prompt if available (though not directly used in edit mode UI)
       optimizedPrompt: initialData?.optimizedPrompt || "",
       title: initialData?.title || "",
-      defaultLlmProvider: initialData?.defaultLlmProvider || "openai"
+      // Update to use modelId and a default model ID
+      modelId: initialData?.modelId || availableModels[0].id // Default to the first model
+      // defaultLlmProvider: initialData?.defaultLlmProvider || "openai" // Remove old provider default
     }
   })
 
@@ -149,7 +169,7 @@ export default function CreatePromptModal({
         rawPrompt: initialData.rawPrompt ?? undefined, // Use undefined as default
         optimizedPrompt: initialData.optimizedPrompt,
         title: initialData.title,
-        defaultLlmProvider: initialData.defaultLlmProvider
+        modelId: initialData.modelId
       })
       setStep("refine")
     } else {
@@ -157,7 +177,7 @@ export default function CreatePromptModal({
         rawPrompt: "",
         optimizedPrompt: "",
         title: "",
-        defaultLlmProvider: "openai"
+        modelId: availableModels[0].id
       })
       setStep("input")
     }
@@ -269,7 +289,9 @@ export default function CreatePromptModal({
           result = await updatePromptTemplateAction(initialData.id, {
             title: values.title,
             optimizedPrompt: values.optimizedPrompt,
-            defaultLlmProvider: values.defaultLlmProvider
+            // Update to send modelId
+            modelId: values.modelId
+            // defaultLlmProvider: values.defaultLlmProvider // Remove old provider
             // rawPrompt is not updated in edit mode
           })
           if (result.isSuccess) {
@@ -286,7 +308,9 @@ export default function CreatePromptModal({
             rawPrompt: values.rawPrompt ?? "", // Ensure rawPrompt is included if needed by action
             optimizedPrompt: values.optimizedPrompt,
             title: values.title,
-            defaultLlmProvider: values.defaultLlmProvider
+            // Update to send modelId
+            modelId: values.modelId
+            // defaultLlmProvider: values.defaultLlmProvider // Remove old provider
           })
 
           if (result.isSuccess) {
@@ -321,7 +345,7 @@ export default function CreatePromptModal({
         rawPrompt: "", // Reset to empty string for create mode default
         optimizedPrompt: "",
         title: "",
-        defaultLlmProvider: "openai"
+        modelId: availableModels[0].id
       })
       setStep("input")
     } else {
@@ -331,7 +355,7 @@ export default function CreatePromptModal({
           rawPrompt: initialData.rawPrompt ?? undefined, // Use undefined as default
           optimizedPrompt: initialData.optimizedPrompt,
           title: initialData.title,
-          defaultLlmProvider: initialData.defaultLlmProvider
+          modelId: initialData.modelId
         })
         setStep("refine")
       } else {
@@ -339,7 +363,7 @@ export default function CreatePromptModal({
           rawPrompt: "", // Reset to empty string for create mode default
           optimizedPrompt: "",
           title: "",
-          defaultLlmProvider: "openai"
+          modelId: availableModels[0].id
         })
         setStep("input")
       }
@@ -358,14 +382,14 @@ export default function CreatePromptModal({
             {isEditMode
               ? "Edit Prompt Template"
               : step === "input"
-                ? "Step 1: Enter Raw Prompt"
+                ? "Generate a prompt"
                 : "Step 2: Refine & Save Prompt"}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
               ? "Refine the prompt details and save your changes."
               : step === "input"
-                ? "Input your base prompt, including any {{placeholders}}. We'll optimize it for you."
+                ? "You can generate a prompt template by sharing basic details about your task"
                 : "Review the optimized prompt and generated title. Make edits if needed, select the default LLM, and save."}
           </DialogDescription>
         </DialogHeader>
@@ -387,10 +411,9 @@ export default function CreatePromptModal({
                 name="rawPrompt"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Raw Prompt</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Enter your initial prompt here, e.g., Write a blog post about {{topic}} focusing on its benefits for small businesses."
+                        placeholder="Describe your task..."
                         rows={8} // Increased rows for initial input
                         {...field}
                       />
@@ -478,10 +501,11 @@ export default function CreatePromptModal({
 
                 <FormField
                   control={form.control}
-                  name="defaultLlmProvider"
+                  // Ensure name is modelId
+                  name="modelId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Default LLM Provider</FormLabel>
+                      <FormLabel>Model</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -489,23 +513,19 @@ export default function CreatePromptModal({
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select LLM provider" />
+                            <SelectValue placeholder="Select model" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {llmProviderEnum.enumValues.map(provider => (
-                            <SelectItem key={provider} value={provider}>
-                              {/* Simple capitalize */}
-                              {provider.charAt(0).toUpperCase() +
-                                provider.slice(1)}
+                          {availableModels.map(model => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {isEditMode
-                          ? "Select the default LLM provider for this template."
-                          : "Select the default LLM for document generation using this template."}
+                        Select the specific model for this template.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

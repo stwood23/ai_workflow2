@@ -108,7 +108,7 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
             </td>
             <td className="px-6 py-5">
               <div className="text-base font-medium text-[#2AB090]">
-                {prompt.defaultLlmProvider}
+                {prompt.modelId}
               </div>
             </td>
             <td className="px-6 py-5">
