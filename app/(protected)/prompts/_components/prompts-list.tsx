@@ -32,19 +32,39 @@ import { toast } from "sonner"
 import type { SelectPromptTemplate } from "@/db/schema"
 import { deletePromptTemplateAction } from "@/actions/db/prompts-actions"
 import { Button } from "@/components/ui/button"
-import { FileText, Loader2, Pencil, Trash2, Copy } from "lucide-react"
+import {
+  FileText,
+  Loader2,
+  Pencil,
+  Trash2,
+  Copy,
+  PlusCircle
+} from "lucide-react"
 import DeletePromptConfirmModal from "./delete-prompt-confirm-modal"
-import CreatePromptModal from "./create-prompt-modal"
+import CreatePromptInputModal from "./create-prompt-input-modal"
+import CreatePromptRefineModal, {
+  type InitialOptimizationData
+} from "./create-prompt-refine-modal"
 
 interface PromptsListProps {
   initialPrompts: SelectPromptTemplate[]
 }
 
 export default function PromptsList({ initialPrompts }: PromptsListProps) {
+  const [prompts, setPrompts] = useState(initialPrompts)
   const [isDeleting, startDeleteTransition] = useTransition()
-  const router = useRouter()
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+  const [editingPrompt, setEditingPrompt] =
+    useState<SelectPromptTemplate | null>(null)
+  const [isRefineModalOpen, setIsRefineModalOpen] = useState(false)
+
+  const router = useRouter()
+
+  const handleEditClick = (prompt: SelectPromptTemplate) => {
+    setEditingPrompt(prompt)
+    setIsRefineModalOpen(true)
+  }
 
   const handleDeleteClick = (promptId: string) => {
     setPromptToDelete(promptId)
@@ -89,6 +109,13 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
         <p className="text-muted-foreground-darker">
           Get started by creating your first prompt template.
         </p>
+        <div className="mt-4">
+          <CreatePromptInputModal>
+            <Button size="sm">
+              <PlusCircle className="mr-2 size-4" /> Create New Prompt
+            </Button>
+          </CreatePromptInputModal>
+        </div>
       </div>
     )
   }
@@ -125,14 +152,13 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
                 >
                   <Copy size={18} />
                 </button>
-                <CreatePromptModal initialData={prompt} isEditMode={true}>
-                  <button
-                    className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
-                    aria-label="Edit Prompt"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                </CreatePromptModal>
+                <button
+                  onClick={() => handleEditClick(prompt)}
+                  className="text-muted-foreground-darker p-2.5 transition-all hover:bg-[#E6F7F0] hover:text-[#2AB090]"
+                  aria-label="Edit Prompt"
+                >
+                  <Pencil size={18} />
+                </button>
                 <button
                   onClick={() => handleDeleteClick(prompt.id)}
                   disabled={isDeleting && promptToDelete === prompt.id}
@@ -157,6 +183,15 @@ export default function PromptsList({ initialPrompts }: PromptsListProps) {
         onConfirm={handleConfirmDelete}
         isLoading={isDeleting}
       />
+
+      {editingPrompt && (
+        <CreatePromptRefineModal
+          isOpen={isRefineModalOpen}
+          onOpenChange={setIsRefineModalOpen}
+          initialData={editingPrompt}
+          isEditMode={true}
+        />
+      )}
     </>
   )
 }

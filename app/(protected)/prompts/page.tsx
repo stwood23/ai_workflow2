@@ -19,7 +19,7 @@
  * - @/actions/db/prompts-actions (getPromptTemplatesAction)
  * - ./_components/prompts-list (PromptsList)
  * - ./_components/prompts-list-skeleton (PromptsListSkeleton)
- * - ./_components/create-prompt-button (CreatePromptButton)
+ * - ./_components/create-prompt-input-modal (CreatePromptInputModal)
  * - @/components/utilities/page-header (PageHeader)
  * - @/components/ui/alert (Alert, AlertDescription, AlertTitle - for errors)
  * - lucide-react (AlertTriangle - for errors)
@@ -38,7 +38,7 @@ import { PlusCircle, AlertTriangle } from "lucide-react"
 import { getPromptTemplatesAction } from "@/actions/db/prompts-actions"
 import PromptsList from "./_components/prompts-list"
 import PromptsListSkeleton from "./_components/prompts-list-skeleton"
-import CreatePromptModal from "./_components/create-prompt-modal"
+import CreatePromptInputModal from "./_components/create-prompt-input-modal"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
@@ -110,13 +110,13 @@ export default async function PromptsPage() {
       <div className="mb-10 flex items-center justify-between">
         <h1 className="text-4xl font-bold text-[#23203A]">Prompt Templates</h1>
 
-        {/* Use CreatePromptModal directly and style the Button */}
-        <CreatePromptModal>
+        {/* Wrap trigger in the Input Modal */}
+        <CreatePromptInputModal>
           <Button className="bg-gradient-to-r from-[#22965A] to-[#2AB090] px-8 py-6 text-base font-bold shadow-[0_4px_16px_rgba(34,150,90,0.16)] hover:shadow-[0_8px_32px_rgba(34,150,90,0.24)]">
             <PlusCircle size={20} className="mr-2" />
             Create New Prompt
           </Button>
-        </CreatePromptModal>
+        </CreatePromptInputModal>
       </div>
 
       {/* Table Layout Container */}

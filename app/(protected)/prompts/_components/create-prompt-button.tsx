@@ -27,8 +27,7 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { PlusCircle } from "lucide-react"
-
-import CreatePromptModal from "./create-prompt-modal" // Import the modal
+import CreatePromptInputModal from "./create-prompt-input-modal"
 
 export default function CreatePromptButton() {
   // Example state management if modal is controlled here (uncomment when modal exists)
@@ -43,21 +42,12 @@ export default function CreatePromptButton() {
   }
 
   return (
-    // Wrap the Button with the CreatePromptModal
-    // The modal handles its own state now via the DialogTrigger
-    <CreatePromptModal>
-      <Button
-      // onClick={handleClick} // Add onClick in Step 2.4
-      // Removed className prop, will use default variant
-      // className={cn(
-      //   // Applying the gradient style as per projectfile.md
-      //   // "focus:ring-offset-background bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-600 hover:to-violet-600 focus:ring-indigo-500"
-      //   "button-primary" // Use the global button style
-      // )}
-      >
-        <PlusCircle className="mr-2 size-4" />
+    // Wrap the Button trigger with the new input modal component
+    <CreatePromptInputModal>
+      <Button className="bg-gradient-to-r from-[#22965A] to-[#2AB090] px-8 py-6 text-base font-bold shadow-[0_4px_16px_rgba(34,150,90,0.16)] hover:shadow-[0_8px_32px_rgba(34,150,90,0.24)]">
+        <PlusCircle size={20} className="mr-2" />
         Create New Prompt
       </Button>
-    </CreatePromptModal>
+    </CreatePromptInputModal>
   )
 }

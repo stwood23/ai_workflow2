@@ -29,5 +29,5 @@ Understand its primary purpose (e.g., email generation, code explanation, blog p
 Identify the key subject or topic based SOLELY on the template text.
 Generate a concise and descriptive title, ideally 3-5 words long.
 The title should capture the essence of what the prompt template helps create.
-DO NOT include any placeholders in the title like {{topic}}
+DO NOT include any placeholders in the title like {}
 Output ONLY the generated title text. Do not include quotation marks or any other conversational text.

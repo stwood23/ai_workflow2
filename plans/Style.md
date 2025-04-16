@@ -48,10 +48,10 @@
 - Sidebar on the left is distinct with a pale background, strong shadow, and curved right corner
 - Navigation icons are line-based, not filled, sized to match text
 - Active sidebar item: highlighted with a pill-shaped, filled background and increased font weight/color
-
+<!--
 ### Avatar/Teams Display
 - Team avatars presented in small, perfectly rounded images, tightly overlapped with a slight border for clarity.
-- Emphasizes collaboration and personality; emoji-like avatars add a playful, humanizing touch.
+- Emphasizes collaboration and personality; emoji-like avatars add a playful, humanizing touch. -->
 
 ## 4. Color Palette
 
