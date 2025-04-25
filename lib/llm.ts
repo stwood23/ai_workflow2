@@ -16,6 +16,7 @@
  *   - `optimizePromptWithLlm`: Refines user prompt templates using the Anthropic Prompt Generation API primarily,
  *     falling back to a specified LLM provider/model with a system prompt.
  *   - `generateTitleWithLlm`: Creates concise titles for prompts using a specified LLM provider/model.
+ *   - `generateDocumentWithLlm`: Generates document content based on a resolved prompt.
  * - Reads system prompts from the `/prompts` directory for fallback/specific tasks.
  * - Manages API keys and default model configurations via environment variables.
  *
@@ -495,6 +496,17 @@ export async function generateTitleWithLlm(rawPrompt: string): Promise<string> {
       `Failed to generate title: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+}
+
+export async function generateDocumentWithLlm(
+  resolvedPrompt: string,
+  provider: LlmProviderEnum
+): Promise<{ content: string; metadata?: Record<string, any> }> {
+  // For document generation, we might not need a specific system prompt defined here,
+  // as the resolvedPrompt itself contains the full instructions.
+  // However, one could be added if there's a general wrapper instruction needed.
+  console.log(`Generating document content using ${provider}`)
+  return await callLlm(resolvedPrompt, provider)
 }
 
 // TODO: Add functions for document generation, editing, etc. as needed in future milestones.

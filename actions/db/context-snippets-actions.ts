@@ -6,7 +6,7 @@
  *
  * @dependencies
  * - @clerk/nextjs/server: For authentication and retrieving the user ID.
- * - drizzle-orm: For database query building (eq, and).
+ * - drizzle-orm: For database query building (eq, and, ilike).
  * - @/db/db: The Drizzle database instance.
  * - @/db/schema: Database schema definitions, specifically contextSnippetsTable.
  * - @/types: ActionState type definition.
@@ -26,7 +26,7 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { and, eq } from "drizzle-orm"
+import { and, eq, ilike } from "drizzle-orm"
 import { PostgresError } from "postgres"
 
 import { db } from "@/db/db"
@@ -86,21 +86,33 @@ export async function createContextSnippetAction(
 
 // --- Read Actions ---
 
-export async function getContextSnippetsAction(): Promise<
-  ActionState<SelectContextSnippet[]>
-> {
+export async function getContextSnippetsAction(options?: {
+  search?: string
+}): Promise<ActionState<SelectContextSnippet[]>> {
   const authResult = await auth()
   const userId = authResult?.userId
   if (!userId) {
     return { isSuccess: false, message: "Unauthorized" }
   }
 
+  const searchQuery = options?.search
+
   try {
+    // Build the where condition dynamically
+    const whereCondition = searchQuery
+      ? and(
+          eq(contextSnippetsTable.userId, userId),
+          // Use ilike for case-insensitive search, searching within the name
+          // Assuming search query does not include '@'
+          ilike(contextSnippetsTable.name, `%${searchQuery}%`)
+        )
+      : eq(contextSnippetsTable.userId, userId)
+
     const snippets = await db
       .select()
       .from(contextSnippetsTable)
-      .where(eq(contextSnippetsTable.userId, userId))
-      .orderBy(contextSnippetsTable.updatedAt) // Or createdAt, or name
+      .where(whereCondition)
+      .orderBy(contextSnippetsTable.name) // Order by name for autocomplete consistency
 
     return {
       isSuccess: true,

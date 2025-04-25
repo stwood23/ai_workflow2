@@ -110,29 +110,7 @@
     - **Step Dependencies**: Step 1.1, Step 1.2, Step 2.1
     - **User Instructions**: Add Shadcn `Card` component (`npx shadcn-ui@latest add card`).
 
-[x] Step 2.3.1 - Todo
-**TODO before next step:** Implement Anthropic and Grok support in `lib/llm.ts`. This involves adding logic to `callLlm` (or a similar function) to handle API requests for these providers, including reading their specific API keys from environment variables (`ANTHROPIC_API_KEY`, `GROK_API_KEY`) and installing necessary SDKs if applicable. This is required for the LLM provider dropdown in the next step.
-
-- [x] Step 2.4: Create Prompt Creation Modal
-    - **Task**: Build the client component modal for creating and optimizing prompts.
-    - **Files**:
-        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Client component using Shadcn Dialog. Use `react-hook-form`. Include fields for raw prompt, optimized prompt, title, LLM provider dropdown. Implement logic for calling `optimizePromptAction`, `generateTitleAction`, and `createPromptTemplateAction`. Handle loading states and error messages (using `react-hot-toast` or similar). Refresh prompt list on success (`router.refresh()`).
-        - `components/ui/dialog.tsx`: Ensure Shadcn Dialog is added.
-        - `components/ui/textarea.tsx`: Ensure Shadcn Textarea is added.
-        - `components/ui/input.tsx`: Ensure Shadcn Input is added.
-        - `components/ui/select.tsx`: Ensure Shadcn Select is added.
-        - `components/ui/form.tsx`: Ensure Shadcn Form components are added (needed for `react-hook-form` integration).
-    - **Step Dependencies**: Step 2.1, Step 2.2, Step 2.3
-    - **User Instructions**: Add Shadcn `Dialog`, `Textarea`, `Input`, `Select`, `Form` (`npx shadcn-ui@latest add dialog textarea input select form`). Install `react-hook-form` (`npm install react-hook-form`) and a toast library like `react-hot-toast` (`npm install react-hot-toast`).
-
-- [x] Step 2.5: Add Analytics for Prompts
-    - **Task**: Integrate PostHog tracking for prompt creation and optimization.
-    - **Files**:
-        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Call `posthog.capture('prompt_template_created')` on successful save. Call `posthog.capture('prompt_template_optimized')` when optimization action succeeds.
-    - **Step Dependencies**: Step 0.5, Step 2.4
-    - **User Instructions**: None
-
-## Phase 3: Milestone 3 - Context Snippet Management
+## Phase 3: Milestone 3 & 3.1 - Context Snippet Management & TipTap Integration
 
 - [x] Step 3.1: Define Context Snippet Schema & Actions
     - **Task**: Create the `context_snippets` table schema and CRUD actions. Implement unique index constraint. Update `db.ts`.
@@ -140,11 +118,11 @@
         - `db/schema/context-snippets.ts`: Define `contextSnippetsTable` schema with `uniqueIndex` on `userId` and `name`.
         - `db/schema/index.ts`: Export schema types and table.
         - `db/db.ts`: Add `contextSnippets: contextSnippetsTable` to the schema object.
-        - `actions/db/context-snippets-actions.ts`: Implement `createContextSnippetAction`, `getContextSnippetsAction`, `getContextSnippetAction`, `getContextSnippetByNameAction`, `updateContextSnippetAction`, `deleteContextSnippetAction`. Include `userId` checks. Handle potential unique constraint errors on create/update.
+        - `actions/db/context-snippets-actions.ts`: Implement `createContextSnippetAction`, `getContextSnippetsAction`, `getContextSnippetAction`, `getContextSnippetByNameAction`, `updateContextSnippetAction`, `deleteContextSnippetAction`. Include `userId` checks. Handle potential unique constraint errors on create/update. **Ensure `getContextSnippetsAction` accepts an optional `search?: string` parameter for filtering.**
     - **Step Dependencies**: Step 0.3
     - **User Instructions**: Run `npx drizzle-kit push:pg` to sync schema changes.
 
-- [ ] Step 3.2: Create Context Snippets Page UI
+- [x] Step 3.2: Create Context Snippets Page UI
     - **Task**: Build the main page for listing context snippets.
     - **Files**:
         - `app/(protected)/context/page.tsx`: Server component. Fetch snippets using `getContextSnippetsAction`. Use Suspense. Render `SnippetsList` and `CreateSnippetButton`.
@@ -155,23 +133,142 @@
     - **Step Dependencies**: Step 1.1, Step 1.2, Step 3.1
     - **User Instructions**: Add Shadcn `Table` if needed (`npx shadcn-ui@latest add table`).
 
-- [ ] Step 3.3: Create Context Snippet Modal
+- [x] Step 3.3: Create Context Snippet Modal
     - **Task**: Build the client component modal for creating/editing snippets.
     - **Files**:
         - `app/(protected)/context/_components/create-edit-snippet-modal.tsx`: Client component (Dialog). Use `react-hook-form`. Handle both create and edit modes. Call `createContextSnippetAction` or `updateContextSnippetAction`. Refresh list on success. Validate name format (`@\w+`).
     - **Step Dependencies**: Step 3.1, Step 3.2
     - **User Instructions**: None
 
-- [ ] Step 3.4: Add Analytics for Context Snippets
+- [x] Step 3.4: Add Analytics for Context Snippets
     - **Task**: Integrate PostHog tracking for snippet creation.
     - **Files**:
         - `app/(protected)/context/_components/create-edit-snippet-modal.tsx`: Call `posthog.capture('context_snippet_created')` on successful creation.
     - **Step Dependencies**: Step 0.5, Step 3.3
     - **User Instructions**: None
 
-## Phase 4: Milestone 2 - Document Generation
+- [ ] Step 3.5: Setup TipTap Rich Text Editor Component
+    - **Task**: Install TipTap dependencies. Create a reusable `RichTextEditor` component wrapping TipTap v3 with the Starter Kit.
+    - **Files**:
+        - `package.json`: Add `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-mention`.
+        - `components/editor/rich-text-editor.tsx`: (New or update existing placeholder) Create the client component. Initialize TipTap `useEditor` with `StarterKit`. Expose props for content (`value`, `onChange` or `react-hook-form` integration).
+    - **Step Dependencies**: None
+    - **User Instructions**: Install dependencies (`npm install @tiptap/react @tiptap/starter-kit @tiptap/extension-mention`).
 
-- [ ] Step 4.1: Define Document Schema
+- [ ] Step 3.6: Implement TipTap Mention Extension for Snippets
+    - **Task**: Configure TipTap's Mention extension for `@` snippet autocomplete. Create suggestion utility using the DB action.
+    - **Files**:
+        - `components/editor/mention-extension.ts`: (New file) Define the suggestion configuration object for the Mention extension.
+            - `items`: Function that takes a query string, calls a helper function (defined next) to fetch filtered snippets.
+            - `render`: Function to render the suggestion list (use Shadcn `Command` component).
+            - `char`: Set to `'@'`.
+        - `lib/snippets-autocomplete.ts`: (New file) Client-side helper function `fetchSnippets(query: string): Promise<Snippet[]>`. This function calls `getContextSnippetsAction({ search: query })`. Implement debouncing here.
+        - `components/editor/rich-text-editor.tsx`: Import and add the configured `Mention.configure({ suggestion: ... })` extension to the `useEditor` hook's `extensions` array.
+        - `actions/db/context-snippets-actions.ts`: Double-check `getContextSnippetsAction` handles the `search` filter correctly (e.g., using `like` operator in Drizzle query).
+        - `components/ui/command.tsx`: Ensure Shadcn Command component is added.
+    - **Step Dependencies**: Step 3.1, Step 3.5
+    - **User Instructions**: Add Shadcn `Command` (`npx shadcn-ui@latest add command`).
+
+- [ ] Step 3.7: Integrate TipTap Editor into Prompt Modal
+    - **Task**: Replace the `Textarea` components in the `CreatePromptModal` with the new `RichTextEditor`. Ensure the editor's plain text output (with `@snippet-name`) is saved.
+    - **Files**:
+        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Replace `Textarea` for `rawPrompt` and `optimizedPrompt` fields with the `RichTextEditor` component. Integrate with `react-hook-form` (e.g., using `Controller` or ensuring `onChange` updates form state with `editor.getText()`).
+    - **Step Dependencies**: Step 2.4, Step 3.5
+    - **User Instructions**: None
+
+- [ ] Step 3.8: Implement Snippet Token Styling & Hover Preview
+    - **Task**: Add styling to render the `@snippet-name` mentions as blue pills within the TipTap editor. Implement hover preview using Tooltip/Popover.
+    - **Files**:
+        - `components/editor/mention-extension.ts`: Update the Mention configuration.
+            - Add `renderLabel` function to customize how the mention text is displayed within the editor (wrap in a span with Tailwind classes).
+            - Potentially use `nodeProps` or decorate the node to apply specific attributes/classes for styling and attaching hover handlers.
+        - `components/editor/rich-text-editor.tsx`: If using decoration or complex rendering, this component might need adjustments. Implement hover logic: wrap the rendered mention span in a Shadcn `Tooltip` or `Popover`. The trigger should fetch the relevant snippet details (`getContextSnippetByNameAction`) to display the preview.
+        - `components/ui/tooltip.tsx`: Ensure Shadcn Tooltip is added.
+        - `components/ui/popover.tsx`: Ensure Shadcn Popover is added.
+    - **Step Dependencies**: Step 3.1, Step 3.6
+    - **User Instructions**: Add Shadcn `Tooltip`, `Popover` (`npx shadcn-ui@latest add tooltip popover`). Refine Tailwind classes (`bg-sky-100 text-sky-700 rounded px-1.5 py-0.5`, etc.) for the blue pill style.
+
+- [ ] Step 3.9: Update Prompt Refinement UI for Context Snippets
+    - **Task**: Modify the refinement step UI in the prompt creation modal to parse snippets from the raw input's plain text and display them.
+    - **Files**:
+        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`:
+            - Update the "Inputs" header in the refinement view to "Inputs & Context".
+            - In the logic that populates the refinement view, parse the *plain text* (`editor.getText()`) from the raw input `RichTextEditor` state using a regex (`/@(\w+)/g`) to find snippet names.
+            - Display the extracted snippet names (e.g., styled as blue pills) in the "Inputs & Context" section.
+            - Ensure the `RichTextEditor` in the refinement view correctly displays the optimized prompt text including the styled `@snippet-name` tokens carried over from the optimization step (which should also use the TipTap editor).
+    - **Step Dependencies**: Step 3.7
+    - **User Instructions**: None
+
+- [ ] Step 3.10: Update Generation Logic to Inject Snippet Content
+    - **Task**: Modify the document generation action (`generateDocumentAction`) to parse `@snippet-name` from the prompt's *plain text*, resolve references into their full content, and inject them before sending to the LLM.
+    - **Files**:
+        - `actions/llm-actions.ts` (`generateDocumentAction`):
+            - **Input**: Assume the prompt template text received here is plain text containing `@snippet-name`.
+            - **Parsing**: Use regex (`/@(\w+)/g`) to find all snippet names in the prompt text.
+            - **Fetching**: Fetch the full `content` for each unique snippet name using `getContextSnippetByNameAction`.
+            - **Replacement**: Replace each `@snippet-name` occurrence in the prompt string with the corresponding fetched content, using a defined format (e.g., `\n--- Snippet: @name ---\n[CONTENT]\n---\n`).
+            - **Placeholders**: After snippet injection, perform `{{placeholder}}` replacement.
+            - **LLM Call**: Send the fully resolved prompt (with injected snippets and replaced placeholders) to the LLM.
+        - `actions/db/context-snippets-actions.ts`: Ensure `getContextSnippetByNameAction(name, userId)` exists and works correctly.
+    - **Step Dependencies**: Step 3.1, Step 3.7 (ensures `@name` format), Step 5.3 (where generation is called)
+    - **User Instructions**: Confirm the desired format for injecting snippet content into the final prompt during generation. Ensure snippet names don't clash with placeholders or LLM syntax.
+
+## Phase 4: Prompt Template Snippet Integration (@mention with Lexical)
+
+- [ ] Step 4.1: Enhance Schemas & Backend for Snippet References
+    - **Task**: Update `prompt_templates` schema to handle Lexical state (e.g., use `jsonb` or `text` for content fields). Ensure `context_snippets` schema exists. Implement action to fetch snippets for autocomplete. Modify prompt actions to handle Lexical state.
+    - **Files**:
+        - `db/schema/prompt-templates.ts`: Adjust `rawPrompt`, `optimizedPrompt` column types if needed.
+        - `db/schema/context-snippets.ts`: Verify schema exists from Phase 3.
+        - `actions/db/context-snippets-actions.ts`: Implement `getSnippetsForAutocompleteAction(userId)`.
+        - `actions/db/prompts-actions.ts`: Update `create/update/get` actions to serialize/deserialize Lexical state potentially containing snippet references.
+    - **Step Dependencies**: Step 2.1, Step 3.1
+    - **User Instructions**: Run `npx drizzle-kit push:pg` if schema changed.
+
+- [ ] Step 4.2: Integrate Lexical Editor
+    - **Task**: Install Lexical. Create a reusable `RichTextEditor` component. Replace `textarea` inputs in Prompt creation/editing modals with this editor.
+    - **Files**:
+        - `package.json`: Add `lexical`, `@lexical/react`.
+        - `components/utilities/rich-text-editor.tsx`: Create the reusable Lexical editor component.
+        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`: Replace `Textarea` for `rawPrompt` and `optimizedPrompt` with `RichTextEditor`. Ensure editor state is correctly handled by `react-hook-form` and passed to actions.
+    - **Step Dependencies**: Step 2.4
+    - **User Instructions**: Install dependencies (`npm install lexical @lexical/react`).
+
+- [ ] Step 4.3: Implement Snippet Autocomplete & Custom Node
+    - **Task**: Configure Lexical typeahead for `@` mentions. Fetch suggestions using `getSnippetsForAutocompleteAction`. Create a custom `SnippetNode` to represent references and style it.
+    - **Files**:
+        - `components/utilities/rich-text-editor.tsx`: Add Lexical typeahead plugin configuration. Implement logic to call the autocomplete action.
+        - `components/lexical/nodes/snippet-node.ts`: Define the custom `SnippetNode` (stores `snippetId`, `snippetName`).
+        - `components/lexical/plugins/snippet-plugin.tsx`: (If needed) Plugin to register the node and its rendering/styling (e.g., blue pill shape).
+    - **Step Dependencies**: Step 4.1, Step 4.2
+    - **User Instructions**: None
+
+- [ ] Step 4.4: Update Prompt Refinement UI for Context
+    - **Task**: Modify the refinement step UI in the prompt creation modal to display included snippets.
+    - **Files**:
+        - `app/(protected)/prompts/_components/create-prompt-modal.tsx`:
+            - Update the "Inputs" header in the refinement view to "Inputs & Context".
+            - Add logic to parse the editor state from the raw input step, extract `SnippetNode`s, and display their names (e.g., styled as blue pills) in the "Inputs & Context" section.
+            - Ensure the `RichTextEditor` in the refinement view correctly displays the carried-over `SnippetNode`s.
+    - **Step Dependencies**: Step 4.2, Step 4.3
+    - **User Instructions**: None
+
+- [ ] Step 4.5: Update Generation Logic to Inject Snippets
+    - **Task**: Modify the document generation action to resolve snippet references into content.
+    - **Files**:
+        - `actions/llm-actions.ts` (`generateDocumentAction`):
+            - Before calling the LLM: Parse the prompt template's Lexical state to find all `SnippetNode`s.
+            - Extract `snippetId` from each node.
+            - Fetch the full `content` for each unique `snippetId` using `getContextSnippetAction` (or a bulk fetch action).
+            - Replace the `SnippetNode` representations in the prompt content string with the actual fetched snippet content, using a clear format (e.g., delimiters).
+            - Send the resolved prompt to the LLM.
+        - `actions/db/context-snippets-actions.ts`: Ensure `getContextSnippetAction(id, userId)` exists and works.
+    - **Step Dependencies**: Step 4.1, Step 4.3, Step 4.4 (implicitly relies on generation trigger)
+    - **User Instructions**: Define the desired format for injecting snippet content into the final prompt.
+
+## Phase 5: Milestone 2 - Document Generation (Renumbered)
+
+- [ ] Step 5.1: Define Document Schema (Renumbered)
     - **Task**: Create the `documents` table schema, including references to prompts and placeholders for workflows. Update `db.ts`.
     - **Files**:
         - `db/schema/documents.ts`: Define `documentsTable` schema, including `promptTemplateId` FK (ON DELETE SET NULL), nullable `workflowInstanceId` and `workflowNodeId`. Add `generationMetadata` (jsonb).
@@ -180,14 +277,14 @@
     - **Step Dependencies**: Step 0.3
     - **User Instructions**: Run `npx drizzle-kit push:pg`.
 
-- [ ] Step 4.2: Implement Document DB Actions
+- [ ] Step 5.2: Implement Document DB Actions
     - **Task**: Create CRUD actions for documents.
     - **Files**:
         - `actions/db/documents-actions.ts`: Implement `createDocumentAction` (internal use for generation), `getDocumentsAction`, `getDocumentAction`, `updateDocumentAction`, `deleteDocumentAction`. Include `userId` checks.
-    - **Step Dependencies**: Step 4.1
+    - **Step Dependencies**: Step 5.1
     - **User Instructions**: None
 
-- [ ] Step 4.3: Update LLM Action for Document Generation
+- [ ] Step 5.3: Update LLM Action for Document Generation
     - **Task**: Enhance `llm-actions.ts` to handle document generation, including placeholder replacement and context snippet injection.
     - **Files**:
         - `actions/llm-actions.ts`: Implement `generateDocumentAction`. Logic should:
@@ -203,10 +300,10 @@
         - `actions/db/context-snippets-actions.ts`: Ensure `getContextSnippetByNameAction` exists and works.
         - `actions/db/prompts-actions.ts`: Ensure `getPromptTemplateAction` exists.
         - `actions/db/documents-actions.ts`: Ensure `createDocumentAction` exists.
-    - **Step Dependencies**: Step 0.6, Step 2.1, Step 3.1, Step 4.2
+    - **Step Dependencies**: Step 0.6, Step 2.1, Step 3.1, Step 5.2
     - **User Instructions**: None
 
-- [ ] Step 4.4: Create Documents Page UI
+- [ ] Step 5.4: Create Documents Page UI
     - **Task**: Build the main page for listing generated documents.
     - **Files**:
         - `app/(protected)/documents/page.tsx`: Server component. Fetch documents using `getDocumentsAction`. Use Suspense. Render `DocumentsList` and `GenerateDocumentButton`.

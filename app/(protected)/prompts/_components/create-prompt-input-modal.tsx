@@ -1,7 +1,50 @@
+/**
+ * @description
+ * This component handles the initial step of the prompt creation process.
+ * Users input a raw prompt using the RichTextEditor, which is then sent for
+ * optimization and title generation.
+ * It manages the state for this modal, the loading state during optimization,
+ * and transitions to the `CreatePromptRefineModal`.
+ *
+ * Key features:
+ * - Captures raw prompt input using a Rich Text Editor.
+ * - Supports snippet autocomplete (@mention) via the integrated editor.
+ * - Initiates prompt optimization and title generation via LLM actions.
+ * - Handles loading states during async operations.
+ * - Navigates to the refine modal with optimization results.
+ * - Allows navigating back from the refine modal.
+ * - Caches the last successful optimization result for the same raw input.
+ *
+ * @dependencies
+ * - react: Core React hooks (useState, useTransition, useCallback, useEffect).
+ * - react-hook-form: Form state management and validation (useForm, Controller, Noop).
+ * - @hookform/resolvers/zod: Zod schema validation for forms.
+ * - zod: Schema definition.
+ * - sonner: Toast notifications.
+ * - lucide-react: Icons.
+ * - posthog-js/react: Analytics tracking.
+ * - @/components/ui/*: Shadcn UI components (Button, Dialog, Form).
+ * - @/actions/llm-actions: Server actions for optimization and title generation.
+ * - ./optimizing-loading-modal: Loading indicator modal.
+ * - ./create-prompt-refine-modal: Next step modal in the flow.
+ * - @/components/editor/rich-text-editor: The TipTap rich text editor component.
+ *
+ * @notes
+ * - The editor saves plain text, including `@snippet-name` placeholders, via the Controller integration using `onTextChange`.
+ * - Form validation ensures the raw prompt meets minimum length requirements.
+ * - Caching mechanism prevents redundant API calls for identical prompts.
+ * - Snippet fetching/suggestions are handled internally by the RichTextEditor/mention-extension.
+ */
 "use client"
 
-import { useState, useTransition, ReactNode, useCallback } from "react"
-import { useForm } from "react-hook-form"
+import {
+  useState,
+  useTransition,
+  ReactNode,
+  useCallback,
+  useEffect
+} from "react"
+import { useForm, Controller, Noop } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
@@ -24,21 +67,19 @@ import {
   FormField,
   FormItem,
   FormMessage
-  // Removed Label, FormDescription - not needed here
 } from "@/components/ui/form"
-import { Textarea } from "@/components/ui/textarea"
+import RichTextEditor from "@/components/editor/rich-text-editor"
+
 import {
   optimizePromptAction,
   generateTitleAction
 } from "@/actions/llm-actions"
 
-// Import the other modals
 import OptimizingLoadingModal from "./optimizing-loading-modal"
 import CreatePromptRefineModal, {
-  type InitialOptimizationData // Import the type for passing data
+  type InitialOptimizationData
 } from "./create-prompt-refine-modal"
 
-// Schema only needs rawPrompt for this form
 const inputFormSchema = z.object({
   rawPrompt: z.string().min(10, {
     message: "Raw prompt must be at least 10 characters."
@@ -48,7 +89,7 @@ const inputFormSchema = z.object({
 type InputFormValues = z.infer<typeof inputFormSchema>
 
 interface CreatePromptInputModalProps {
-  children: ReactNode // The trigger element
+  children: ReactNode
 }
 
 export default function CreatePromptInputModal({
@@ -58,7 +99,7 @@ export default function CreatePromptInputModal({
   const [isInputModalOpen, setIsInputModalOpen] = useState(false)
   const [lastSubmittedRawPrompt, setLastSubmittedRawPrompt] = useState<
     string | null
-  >(null) // State to store the last submitted prompt
+  >(null)
 
   // State for loading modal
   const [isOptimizing, startOptimizeTransition] = useTransition()
@@ -78,30 +119,23 @@ export default function CreatePromptInputModal({
   })
 
   const handleOptimize = (values: InputFormValues) => {
-    const rawPromptValue = values.rawPrompt // Already validated by form
+    const rawPromptValue = values.rawPrompt
 
-    // Check if the prompt is the same as the last successful one and we have data
     if (
       rawPromptValue === lastSubmittedRawPrompt &&
       optimizationData &&
-      !isOptimizing // Ensure we are not already optimizing
+      !isOptimizing
     ) {
       toast.info("Using previously optimized result.")
       setIsInputModalOpen(false)
-      setIsRefineModalOpen(true) // Reopen refine modal with existing data
-      return // Skip API calls
+      setIsRefineModalOpen(true)
+      return
     }
 
-    // If different or no previous data, proceed with optimization
     startOptimizeTransition(async () => {
-      // Update the last submitted prompt *before* starting async work
       setLastSubmittedRawPrompt(rawPromptValue)
 
-      // Close input modal, open loading modal
       setIsInputModalOpen(false)
-      // Note: isOptimizing state is automatically true during transition
-      // We'll manually control the loading modal visibility based on the transition state
-      // in the return statement below.
 
       toast.info("Optimizing prompt and generating title...")
 
@@ -116,7 +150,6 @@ export default function CreatePromptInputModal({
         let optimizeError: string | null = null
         let titleError: string | null = null
 
-        // Handle Optimization Result
         if (
           optimizeResult.status === "fulfilled" &&
           optimizeResult.value.isSuccess
@@ -131,7 +164,6 @@ export default function CreatePromptInputModal({
           toast.error(`Optimization failed: ${optimizeError}`)
         }
 
-        // Handle Title Generation Result
         if (titleResult.status === "fulfilled" && titleResult.value.isSuccess) {
           title = titleResult.value.data
         } else {
@@ -142,95 +174,76 @@ export default function CreatePromptInputModal({
           toast.error(`Title generation failed: ${titleError}`)
         }
 
-        // Proceed only if both succeeded
         if (!optimizeError && !titleError) {
           toast.success(
             "Prompt optimized and title generated! Review and save."
           )
-          // Store the complete data including the rawPrompt that generated it
           const newOptimizationData = {
             rawPrompt: rawPromptValue,
             optimizedPrompt: optimizedPrompt,
             title: title
           }
           setOptimizationData(newOptimizationData)
-          setIsRefineModalOpen(true) // Open refine modal
-          // Don't reset form here, keep rawPrompt in case user goes back
+          setIsRefineModalOpen(true)
         } else {
-          // If failed, show error toasts (already done above)
-          // Re-open the input modal? Or just let user close trigger?
-          // Let's keep it closed and rely on toasts.
-          // Maybe add a button in the toast to retry?
           toast.warning(
             "Optimization or title generation failed. Please review errors and try again."
           )
-          // We could potentially re-open the input modal here if desired:
-          // setIsInputModalOpen(true)
+          setLastSubmittedRawPrompt(null)
+          setOptimizationData(null)
         }
       } catch (error) {
         console.error("Error during optimization/title generation:", error)
         toast.error("An unexpected error occurred during optimization.")
-        // Optionally re-open input modal on unexpected errors
-        // setIsInputModalOpen(true)
-        // Clear last submitted prompt on error so next attempt forces API call
         setLastSubmittedRawPrompt(null)
-        // Clear potentially partial optimization data
         setOptimizationData(null)
       }
-      // isOptimizing automatically becomes false after transition ends
     })
   }
 
-  // Reset form only when opening via trigger (not on back navigation)
   const handleInputOpenChange = (open: boolean) => {
     setIsInputModalOpen(open)
     if (open && !isRefineModalOpen) {
-      // Only reset fully if opening fresh (not coming back from refine)
-      form.reset({ rawPrompt: "" }) // Reset to empty
-      setLastSubmittedRawPrompt(null) // Clear cache trigger
-      setOptimizationData(null) // Clear cached data
+      form.reset({ rawPrompt: "" })
+      setLastSubmittedRawPrompt(null)
+      setOptimizationData(null)
     } else if (!open) {
-      // If closing completely (not navigating), maybe reset? Or handle in trigger?
-      // Let's keep the state for now, trigger opening handles reset.
-    }
-  }
-
-  // Handler for when the refine modal closes (e.g., Save or Cancel/Back)
-  const handleRefineOpenChange = (open: boolean) => {
-    setIsRefineModalOpen(open)
-    if (!open && !isInputModalOpen) {
-      // If refine is closing AND input is not opening (i.e., not Back)
-      // Clear optimization data to ensure fresh start next time
       setOptimizationData(null)
       setLastSubmittedRawPrompt(null)
     }
-    // If refine is closing because 'Back' was pressed, handleNavigateBackFromRefine takes care of state
   }
 
-  // Function to handle navigating back from Refine to Input
+  const handleRefineOpenChange = (open: boolean) => {
+    setIsRefineModalOpen(open)
+    if (!open && !isInputModalOpen) {
+      setOptimizationData(null)
+      setLastSubmittedRawPrompt(null)
+    }
+  }
+
   const handleNavigateBackFromRefine = useCallback(() => {
-    setIsRefineModalOpen(false) // Close refine modal
-    setIsInputModalOpen(true) // Open input modal
-    // Set the form value to the last submitted prompt
+    setIsRefineModalOpen(false)
+    setIsInputModalOpen(true)
     if (lastSubmittedRawPrompt) {
       form.setValue("rawPrompt", lastSubmittedRawPrompt, {
-        shouldValidate: true // Optional: re-validate
+        shouldValidate: true
       })
     }
-    // No need to reset optimizationData or lastSubmittedRawPrompt here
-  }, [form, lastSubmittedRawPrompt]) // Dependencies
+  }, [form, lastSubmittedRawPrompt])
 
   return (
     <>
-      {/* Input Modal Trigger and Content */}
       <Dialog open={isInputModalOpen} onOpenChange={handleInputOpenChange}>
         <DialogTrigger asChild>{children}</DialogTrigger>
-        {/* Use original narrow width */}
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[750px]">
           <DialogHeader>
-            <DialogTitle>Create Prompt Template</DialogTitle>
+            <DialogTitle className="sr-only">
+              Create Prompt Template
+            </DialogTitle>
             <DialogDescription>
-              Describe the task for your prompt, and we'll optimize it for you.
+              Describe the task for your prompt, including any reusable{" "}
+              <code className="bg-muted rounded px-1 py-0.5">@snippet</code>{" "}
+              placeholders. We'll optimize it for you.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -244,10 +257,19 @@ export default function CreatePromptInputModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Textarea
-                        placeholder="Example: Write a marketing email announcing a new product launch..."
-                        rows={8}
-                        {...field}
+                      <Controller
+                        control={form.control}
+                        name="rawPrompt"
+                        render={({ field: { onChange, value, onBlur } }) => (
+                          <RichTextEditor
+                            value={value}
+                            onTextChange={onChange}
+                            onBlur={onBlur as Noop}
+                            placeholder="Example: Write a marketing email announcing our new {{product_name}} using the @company-overview snippet..."
+                            disabled={isOptimizing}
+                            aria-label="Raw Prompt Input"
+                          />
+                        )}
                       />
                     </FormControl>
                     <FormMessage />
@@ -277,17 +299,15 @@ export default function CreatePromptInputModal({
         </DialogContent>
       </Dialog>
 
-      {/* Loading Modal - controlled by optimizing transition state */}
       <OptimizingLoadingModal isOpen={isOptimizing} />
 
-      {/* Refine Modal - controlled by its own state, pass onBack handler */}
       {optimizationData && (
         <CreatePromptRefineModal
           isOpen={isRefineModalOpen}
           onOpenChange={handleRefineOpenChange}
-          initialData={optimizationData} // Pass the fetched/cached data
-          isEditMode={false} // Always false when coming from input modal
-          onBack={handleNavigateBackFromRefine} // Pass the back navigation handler
+          initialData={optimizationData}
+          isEditMode={false}
+          onBack={handleNavigateBackFromRefine}
         />
       )}
     </>

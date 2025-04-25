@@ -10,21 +10,22 @@
  * The modal allows users to:
  * - Edit the prompt template's title (click-to-edit).
  * - Select the target LLM model for the template.
- * - Review and edit the AI-optimized prompt text.
- * - View detected placeholders (e.g., `{{variable}}`) extracted from the optimized prompt.
+ * - Review and edit the AI-optimized prompt text using a Rich Text Editor.
+ * - View detected placeholders (`{{variable}}`) and context snippets (`@snippet`)
+ *   extracted from the relevant prompt texts.
  * - Save the changes (either updating an existing template or creating a new one).
  * - Navigate back (in create mode) or cancel (in edit mode).
  *
  * It utilizes `react-hook-form` for form management and validation (`zod`),
- * `shadcn/ui` components for the UI elements (Dialog, Form, Input, Select, Textarea, Badge, Tooltip),
+ * `shadcn/ui` components for the UI elements (Dialog, Form, Input, Select, Badge, Tooltip),
  * `lucide-react` for icons, `sonner` for notifications, and `useTransition` for handling
- * asynchronous save operations gracefully. It also integrates with PostHog for analytics
- * upon successful prompt creation.
+ * asynchronous save operations gracefully. It integrates with the `RichTextEditor`
+ * for the main prompt field.
  *
  * @module CreatePromptRefineModal
  * @requires react
  * @requires next/navigation
- * @requires react-hook-form
+ * @requires react-hook-form (useForm, useWatch, Controller, Noop)
  * @requires @hookform/resolvers/zod
  * @requires zod
  * @requires sonner
@@ -34,13 +35,13 @@
  * @requires @/actions/db/prompts-actions - Server actions for DB operations
  * @requires @/lib/utils - Utility functions (e.g., cn)
  * @requires @/db/schema - Database schema types (`SelectPromptTemplate`)
+ * @requires @/components/editor/rich-text-editor - The TipTap editor component
  */
-
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { useForm, useWatch } from "react-hook-form" // Added useWatch
+import { useForm, useWatch, Controller, Noop } from "react-hook-form" // Added Controller, Noop
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { toast } from "sonner"
@@ -48,7 +49,13 @@ import { Loader2, Pencil, Info } from "lucide-react"
 import { usePostHog } from "posthog-js/react"
 
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
@@ -58,7 +65,7 @@ import {
   FormMessage
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge" // Added Badge import
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -66,7 +73,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import RichTextEditor from "@/components/editor/rich-text-editor" // Added
 import {
   Tooltip,
   TooltipContent,
@@ -77,7 +84,7 @@ import {
   createPromptTemplateAction,
   updatePromptTemplateAction
 } from "@/actions/db/prompts-actions"
-import { cn } from "@/lib/utils"
+import { cn, convertMarkdownToHtml } from "@/lib/utils"
 import { SelectPromptTemplate } from "@/db/schema"
 
 /**
@@ -101,6 +108,20 @@ const availableModels = [
  * Used for validation purposes within the form schema.
  */
 const modelIds = availableModels.map(m => m.id)
+
+/**
+ * @constant snippetRegex
+ * @description Regex to find all occurrences of @snippet names (e.g., @company-info).
+ * Captures the name part after the '@'.
+ */
+const snippetRegex = /@(\w+)/g // Use \w+ to match alphanumeric and underscores
+
+/**
+ * @constant placeholderRegex
+ * @description Regex to find all occurrences of {{placeholder}} variables.
+ * Captures the text inside the double braces.
+ */
+const placeholderRegex = /\{\{(.*?)\}\}/g // Existing regex
 
 /**
  * @constant formSchema
@@ -142,7 +163,7 @@ export type CreatePromptFormValues = z.infer<typeof formSchema>
  */
 export interface InitialOptimizationData {
   rawPrompt: string
-  optimizedPrompt: string
+  optimizedPrompt: string // This will be plain text now
   title: string
   modelId?: string
 }
@@ -220,7 +241,8 @@ export default function CreatePromptRefineModal({
   onBack
 }: CreatePromptRefineModalProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [extractedInputs, setExtractedInputs] = useState<string[]>([]) // State for extracted placeholders
+  const [extractedInputs, setExtractedInputs] = useState<string[]>([])
+  const [extractedSnippets, setExtractedSnippets] = useState<string[]>([]) // New state for snippets
   const [isSaving, startSaveTransition] = useTransition()
   const router = useRouter()
   const posthog = usePostHog()
@@ -229,67 +251,96 @@ export default function CreatePromptRefineModal({
     resolver: zodResolver(formSchema),
     defaultValues: {
       rawPrompt: "",
-      optimizedPrompt: "",
+      optimizedPrompt: "", // Initial value for the editor
       title: "",
-      modelId: availableModels[0].id // Sensible default
+      modelId: availableModels[0].id
     }
   })
 
-  // Watch the 'optimizedPrompt' field to extract inputs dynamically
+  // Watch the optimized prompt value for placeholder extraction
   const optimizedPromptValue = useWatch({
     control: form.control,
     name: "optimizedPrompt"
   })
 
-  // Effect to extract placeholders whenever optimizedPromptValue changes
+  // Watch the raw prompt value for snippet extraction (only in create mode)
+  const rawPromptValue = useWatch({
+    control: form.control,
+    name: "rawPrompt"
+  })
+
+  // Effect to extract placeholders from optimizedPromptValue
   useEffect(() => {
     if (optimizedPromptValue) {
-      // Regex to find all occurrences of {{text}}
-      const placeholderRegex = /\{\{(.*?)\}\}/g
       const matches = optimizedPromptValue.matchAll(placeholderRegex)
-      // Extract the captured group (the text inside the braces) and remove duplicates
       const uniqueInputs = [...new Set(Array.from(matches, m => m[1].trim()))]
-      // Filter out any empty strings that might result from {{}}
       setExtractedInputs(uniqueInputs.filter(input => input.length > 0))
     } else {
-      setExtractedInputs([]) // Clear inputs if prompt is empty
+      setExtractedInputs([])
     }
-  }, [optimizedPromptValue]) // Rerun only when the watched value changes
+  }, [optimizedPromptValue])
+
+  // Effect to extract snippets from rawPromptValue (only in create mode)
+  useEffect(() => {
+    if (!isEditMode && rawPromptValue) {
+      const matches = rawPromptValue.matchAll(snippetRegex)
+      const uniqueSnippets = [...new Set(Array.from(matches, m => m[1]))] // m[1] is the name without '@'
+      setExtractedSnippets(uniqueSnippets.filter(snippet => snippet.length > 0))
+    } else if (isEditMode && initialData && "id" in initialData) {
+      // In edit mode, try to extract snippets from the *optimized* prompt
+      // as the raw prompt might not be readily available or relevant
+      const optimizedTextForSnippets = initialData.optimizedPrompt
+      const matches = optimizedTextForSnippets.matchAll(snippetRegex)
+      const uniqueSnippets = [...new Set(Array.from(matches, m => m[1]))]
+      setExtractedSnippets(uniqueSnippets.filter(snippet => snippet.length > 0))
+    } else {
+      setExtractedSnippets([])
+    }
+  }, [rawPromptValue, isEditMode, initialData]) // Depend on rawPromptValue and mode
 
   // Effect to reset form and state when initialData changes or modal opens/closes
   useEffect(() => {
-    if (isOpen && initialData) {
-      // Populate form based on edit mode or create refinement mode
-      if ("id" in initialData) {
-        // Edit mode: Use data from existing prompt template record
+    const setFormData = async () => {
+      if (isOpen && initialData) {
+        // Convert Markdown optimized prompt to HTML for the editor
+        const formattedOptimizedPrompt = await convertMarkdownToHtml(
+          initialData.optimizedPrompt
+        )
+
+        if ("id" in initialData) {
+          // Edit mode
+          form.reset({
+            rawPrompt: initialData.rawPrompt ?? undefined,
+            optimizedPrompt: formattedOptimizedPrompt, // Use formatted HTML
+            title: initialData.title,
+            modelId: initialData.modelId
+          })
+        } else {
+          // Create refinement mode
+          form.reset({
+            rawPrompt: initialData.rawPrompt,
+            optimizedPrompt: formattedOptimizedPrompt, // Use formatted HTML
+            title: initialData.title,
+            modelId: initialData.modelId || availableModels[0].id
+          })
+        }
+        setIsEditingTitle(false)
+        // Extracted inputs/snippets will be updated by their respective useEffects
+      } else if (!isOpen) {
+        // Reset form and extracted items when modal closes
         form.reset({
-          rawPrompt: initialData.rawPrompt ?? undefined, // Keep raw prompt if available
-          optimizedPrompt: initialData.optimizedPrompt,
-          title: initialData.title,
-          modelId: initialData.modelId
+          rawPrompt: "",
+          optimizedPrompt: "", // Reset to empty string
+          title: "",
+          modelId: availableModels[0].id
         })
-      } else {
-        // Create refinement mode: Use data from initial optimization step
-        form.reset({
-          rawPrompt: initialData.rawPrompt, // Crucial: Set rawPrompt for create action
-          optimizedPrompt: initialData.optimizedPrompt,
-          title: initialData.title,
-          modelId: initialData.modelId || availableModels[0].id // Use provided or default model
-        })
+        setIsEditingTitle(false)
+        setExtractedInputs([])
+        setExtractedSnippets([]) // Clear snippets on close
       }
-      setIsEditingTitle(false) // Reset title edit state
-      // Note: extractedInputs will be updated by the other useEffect based on the new optimizedPrompt value
-    } else if (!isOpen) {
-      // Reset form and extracted inputs when modal closes
-      form.reset({
-        rawPrompt: "",
-        optimizedPrompt: "",
-        title: "",
-        modelId: availableModels[0].id
-      })
-      setIsEditingTitle(false)
-      setExtractedInputs([]) // Explicitly clear inputs on close
     }
+
+    setFormData()
   }, [initialData, isOpen, isEditMode, form])
 
   /**
@@ -412,221 +463,263 @@ export default function CreatePromptRefineModal({
     <Dialog open={isOpen} onOpenChange={handleInternalOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         {/* TooltipProvider needed for nested tooltips */}
+        <DialogHeader>
+          <DialogTitle className="sr-only">
+            {isEditMode ? "Edit Prompt Template" : "Refine Prompt Template"}
+          </DialogTitle>
+        </DialogHeader>
         <TooltipProvider>
           <Form {...form}>
             {/* Form element handles submission */}
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-6 pt-4" // Added padding top for spacing from potential DialogHeader
+              className="grid grid-cols-1 gap-6 pt-4 md:grid-cols-3"
             >
-              {/* ----- Click-to-edit Title ----- */}
-              <FormItem className="space-y-1">
-                {isEditingTitle ? (
-                  // Render input field when editing title
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormControl>
-                        <Input
-                          placeholder="Enter a descriptive title..."
-                          {...field}
-                          onBlur={() => setIsEditingTitle(false)} // Stop editing on blur
-                          onKeyDown={e => {
-                            // Stop editing on Enter key
-                            if (e.key === "Enter") {
-                              e.preventDefault() // Prevent form submission
-                              setIsEditingTitle(false)
-                            }
-                          }}
-                          autoFocus // Focus input when it appears
-                          className="text-lg font-semibold" // Style to match h3
-                        />
-                      </FormControl>
-                    )}
-                  />
-                ) : (
-                  // Render display title with edit icon when not editing
-                  <div
-                    className={cn(
-                      "hover:border-input flex cursor-pointer items-center gap-2 rounded-md border border-transparent p-2",
-                      "transition-colors duration-150 ease-in-out" // Added transition
-                    )}
-                    onClick={() => setIsEditingTitle(true)} // Start editing on click
-                    role="button" // Accessibility: Indicate it's clickable
-                    tabIndex={0} // Accessibility: Make it focusable
-                    onKeyDown={e => {
-                      // Allow editing with Enter/Space key
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault()
-                        setIsEditingTitle(true)
-                      }
-                    }}
-                  >
-                    <h3 className="text-xl font-semibold leading-none tracking-tight">
-                      {/* Display current title from form state or placeholder */}
-                      {form.watch("title") || "Click to add title"}
-                    </h3>
-                    <Pencil className="text-muted-foreground size-4 shrink-0" />
-                  </div>
-                )}
-                {/* Display validation errors for the title */}
-                <FormMessage>
-                  {form.formState.errors.title?.message}
-                </FormMessage>
-              </FormItem>
-
-              {/* ----- Model Selection Dropdown ----- */}
-              <FormField
-                control={form.control}
-                name="modelId"
-                render={({ field }) => (
-                  <FormItem>
-                    {/* Label with Tooltip */}
-                    <div className="flex items-center gap-1.5">
-                      <FormLabel>Model</FormLabel>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="text-muted-foreground size-4 cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Select the target LLM for this template.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    {/* Select Component */}
-                    <Select
-                      onValueChange={field.onChange} // Update form state on change
-                      value={field.value} // Controlled component
-                      disabled={isSaving} // Disable while saving
+              {/* Left Column: Title, Model, Inputs */}
+              <div className="space-y-6 md:col-span-1">
+                {/* ----- Click-to-edit Title ----- */}
+                <FormItem className="space-y-1">
+                  {isEditingTitle ? (
+                    // Render input field when editing title
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormControl>
+                          <Input
+                            placeholder="Enter a descriptive title..."
+                            {...field}
+                            onBlur={() => setIsEditingTitle(false)} // Stop editing on blur
+                            onKeyDown={e => {
+                              // Stop editing on Enter key
+                              if (e.key === "Enter") {
+                                e.preventDefault() // Prevent form submission
+                                setIsEditingTitle(false)
+                              }
+                            }}
+                            autoFocus // Focus input when it appears
+                            className="text-lg font-semibold" // Style to match h3
+                          />
+                        </FormControl>
+                      )}
+                    />
+                  ) : (
+                    // Render display title with edit icon when not editing
+                    <div
+                      className={cn(
+                        "hover:border-input flex cursor-pointer items-center gap-2 rounded-md border border-transparent p-2",
+                        "transition-colors duration-150 ease-in-out" // Added transition
+                      )}
+                      onClick={() => setIsEditingTitle(true)} // Start editing on click
+                      role="button" // Accessibility: Indicate it's clickable
+                      tabIndex={0} // Accessibility: Make it focusable
+                      onKeyDown={e => {
+                        // Allow editing with Enter/Space key
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setIsEditingTitle(true)
+                        }
+                      }}
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {/* Map available models to SelectItem options */}
-                        {availableModels.map(model => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Display validation errors for model selection */}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* ----- Optimized Prompt Textarea ----- */}
-              <FormField
-                control={form.control}
-                name="optimizedPrompt"
-                render={({ field }) => (
-                  <FormItem>
-                    {/* Label with Tooltip */}
-                    <div className="flex items-center gap-1.5">
-                      <FormLabel>Optimized Prompt</FormLabel>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="text-muted-foreground size-4 cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            Review and edit the prompt template. Use double
-                            curly braces for inputs, e.g.,{" "}
-                            <code>{"{{variable}}"}</code>.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
+                      <h3 className="text-xl font-semibold leading-none tracking-tight">
+                        {/* Display current title from form state or placeholder */}
+                        {form.watch("title") || "Click to add title"}
+                      </h3>
+                      <Pencil className="text-muted-foreground size-4 shrink-0" />
                     </div>
-                    {/* Textarea Component */}
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter or review the optimized prompt template here..."
-                        rows={10} // Adjusted rows for better balance with inputs section
-                        {...field} // Spread field props (value, onChange, onBlur, etc.)
-                        disabled={isSaving} // Disable while saving
-                        // Removed conditional class based on optimization state
-                      />
-                    </FormControl>
-                    {/* Display validation errors for the prompt */}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  )}
+                  {/* Display validation errors for the title */}
+                  <FormMessage>
+                    {form.formState.errors.title?.message}
+                  </FormMessage>
+                </FormItem>
 
-              {/* ----- Extracted Inputs Section ----- */}
-              <FormItem>
-                {/* Label with Tooltip */}
+                {/* ----- Model Selection Dropdown ----- */}
+                <FormField
+                  control={form.control}
+                  name="modelId"
+                  render={({ field }) => (
+                    <FormItem>
+                      {/* Label with Tooltip */}
+                      <div className="flex items-center gap-1.5">
+                        <FormLabel>Model</FormLabel>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="text-muted-foreground size-4 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select the target LLM for this template.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                      {/* Select Component */}
+                      <Select
+                        onValueChange={field.onChange} // Update form state on change
+                        value={field.value} // Controlled component
+                        disabled={isSaving} // Disable while saving
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select model" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {/* Map available models to SelectItem options */}
+                          {availableModels.map(model => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {/* Display validation errors for model selection */}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* ----- Inputs & Context Section ----- */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <FormLabel>Inputs & Context</FormLabel>{" "}
+                    {/* Updated Header */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="text-muted-foreground size-4 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Detected{" "}
+                          <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                            {"{{input}}"}
+                          </code>{" "}
+                          placeholders and{" "}
+                          <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                            {"@snippet"}
+                          </code>{" "}
+                          references. Snippets will be injected during
+                          generation.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  {/* Render Placeholders */}
+                  {extractedInputs.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {extractedInputs.map((input, index) => (
+                        <Badge key={`input-${index}`} variant="outline">
+                          {"{{"} {input} {"}}"}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  {/* Render Snippets */}
+                  {extractedSnippets.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {extractedSnippets.map((snippet, index) => (
+                        <Badge
+                          key={`snippet-${index}`}
+                          className="bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-900 dark:text-sky-100 dark:hover:bg-sky-800"
+                        >
+                          @{snippet}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  {/* Message if neither are found */}
+                  {extractedInputs.length === 0 &&
+                  extractedSnippets.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No placeholders or snippets detected.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Right Column: Optimized Prompt Editor */}
+              <div className="space-y-2 md:col-span-2">
                 <div className="flex items-center gap-1.5">
-                  <FormLabel>Inputs</FormLabel>
+                  <FormLabel htmlFor="optimizedPrompt">
+                    Optimized Prompt
+                  </FormLabel>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="text-muted-foreground size-4 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>
-                        These are the template placeholders detected in the
-                        Optimized Prompt. They will be filled in later when
-                        generating documents.
+                        Review and edit the AI-optimized prompt. This is what
+                        will be saved and used for generation.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                {/* Container for Input Badges */}
-                <div className="border-input bg-background flex min-h-[40px] flex-wrap gap-2 rounded-md border px-3 py-2">
-                  {extractedInputs.length > 0 ? (
-                    // Map extracted inputs to Badge components
-                    extractedInputs.map(input => (
-                      <Badge variant="default" key={input}>
-                        {input}
-                      </Badge>
-                    ))
-                  ) : (
-                    // Display message if no inputs are found
-                    <p className="text-muted-foreground text-sm">
-                      No inputs (e.g., <code>{"{{variable}}"}</code>) detected
-                      in the prompt.
-                    </p>
+                <FormField
+                  control={form.control}
+                  name="optimizedPrompt"
+                  render={({ field: { onChange, value, onBlur } }) => (
+                    <FormItem>
+                      <FormControl>
+                        {/* Use Controller to integrate RichTextEditor */}
+                        <Controller
+                          control={form.control}
+                          name="optimizedPrompt"
+                          render={({ field: { onChange, value, onBlur } }) => (
+                            <div
+                              className="overflow-hidden"
+                              style={{
+                                height: "350px",
+                                maxHeight: "350px",
+                                minHeight: "350px",
+                                position: "relative",
+                                display: "flex",
+                                flexDirection: "column"
+                              }}
+                            >
+                              <RichTextEditor
+                                value={value}
+                                onTextChange={onChange}
+                                onBlur={onBlur as Noop}
+                                placeholder="The optimized prompt will appear here..."
+                                disabled={isSaving}
+                                aria-label="Optimized Prompt Editor"
+                                id="optimizedPrompt"
+                                style={{
+                                  height: "100%",
+                                  maxHeight: "100%",
+                                  width: "100%",
+                                  border: "none"
+                                }}
+                              />
+                            </div>
+                          )}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-                {/* No FormMessage needed here as this isn't a direct form field */}
-              </FormItem>
+                />
+              </div>
 
-              {/* ----- Dialog Footer with Action Buttons ----- */}
-              <DialogFooter className="pt-4 sm:justify-between">
-                {/* Back/Cancel Button */}
+              {/* Dialog Footer outside the grid */}
+              <DialogFooter className="pt-4 md:col-span-3">
                 <Button
-                  type="button" // Ensure it doesn't submit the form
+                  type="button"
                   variant="outline"
                   onClick={handleBackOrCancel}
                   disabled={isSaving} // Disable while saving
                 >
-                  {/* Text changes based on mode */}
-                  {!isEditMode ? "Back" : "Cancel"}
+                  {/* Show Back in create mode, Cancel in edit mode */}
+                  {!isEditMode && onBack ? "Back" : "Cancel"}
                 </Button>
-
-                {/* Submit/Save Button */}
                 <Button
                   type="submit"
-                  // Disable if saving OR if the title is currently being edited
-                  disabled={isSaving || isEditingTitle}
+                  disabled={isSaving || isEditingTitle} // Disable if saving or editing title
                 >
-                  {isSaving && (
-                    // Show loader when saving
+                  {isSaving ? (
                     <Loader2 className="mr-2 size-4 animate-spin" />
-                  )}
-                  {/* Text changes based on mode and saving state */}
-                  {isSaving
-                    ? isEditMode
-                      ? "Saving Changes..."
-                      : "Saving Prompt..."
-                    : isEditMode
-                      ? "Save Changes"
-                      : "Save Prompt"}
+                  ) : null}
+                  {isEditMode ? "Save Changes" : "Create Template"}
                 </Button>
               </DialogFooter>
             </form>

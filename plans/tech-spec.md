@@ -16,7 +16,8 @@
     - **Frontend:**
         - Next.js 14+ (App Router), React 18+, TypeScript
         - Tailwind CSS, Shadcn UI, Framer Motion, `lucide-react`
-        - Primarily Server Components with Client Components for interactivity.
+        - Primarily Server Components with Client Components for interactivity
+    -  **TipTap v3** rich‑text editor (Starter‑Kit + Mention extension) for inline  `@snippet` autocomplete and token rendering
     - **Backend:**
         - Node.js (via Next.js Server Actions/Route Handlers).
         - Supabase (PostgreSQL).
@@ -39,6 +40,10 @@
                 - `page.tsx`: List prompts.
                 - `[promptId]/page.tsx`: View/Edit prompt details (TBD if needed).
                 - `_components/`: Prompt-specific components (e.g., `create-prompt-modal.tsx`, `prompts-list.tsx`).
+                  - snippets-autocomplete.ts      // Client helper to fetch & cache snippets
+                  - mention-extension.ts          // Shared Mention node & suggestion config lib/
+                  -  snippets-autocomplete.ts      // Client helper to fetch & cache snippets
+  - components
             - `documents/`: Document management section.
                 - `page.tsx`: List documents.
                 - `[documentId]/edit/page.tsx`: Edit document manually or Real-time via AI chat editor.
@@ -61,6 +66,7 @@
     - `components/`: Shared components.
         - `ui/`: Core UI elements (mostly Shadcn, potentially customized).
         - `utilities/`: Utility components (e.g., `loading-spinner.tsx`, `skeleton-loader.tsx`, `page-header.tsx`, `sidebar.tsx`).
+        - /editor/mention-extension.ts – shared TipTap Mention config.
     - `db/`: Database configuration and schemas.
         - `db.ts`: Drizzle client instance and schema object.
         - `schema/`: Drizzle schema definitions (`*.ts` files).
@@ -80,6 +86,7 @@
         - `llm.ts`: Abstraction layer for interacting with different LLM APIs.
           // TODO: Implement support for Anthropic and Grok APIs, including SDK/fetch logic and API key handling (ANTHROPIC_API_KEY, GROK_API_KEY).
         - `posthog.ts`: PostHog client instance helper (if needed beyond provider).
+        - snippets-autocomplete.ts – client helper to fetch & cache user snippets
     - `prompts/`: Text files containing system prompts for LLM interactions (e.g., `optimize_prompt.txt`, `generate_title.txt`).
     - `public/`: Static assets (images, fonts if not using CDN).
     - `types/`: TypeScript interfaces and types.
@@ -98,6 +105,8 @@
     - `package.json`: Project dependencies.
     - `tsconfig.json`: TypeScript configuration.
     - `tailwind.config.ts`: Tailwind CSS configuration.
+  -  
+  -
 
 ## 3. Feature Specification
 
@@ -114,7 +123,19 @@
         - Dropdown to select default LLM provider (OpenAI, Anthropic, Grok).
         - "Save Prompt" button.
         - "Cancel" button.
+    - **Rich‑Text Editor:** TipTap v3 instance replacing the raw `<textarea>`.
+        - Typing `@` opens an autocomplete dropdown of the user’s context snippets.
+        - ↑/↓ navigate; **Tab** / **Enter** inserts the highlighted snippet.
+        - Inserted snippet appears as a blue pill token (`@snippet-name`).
+        - Dropdown includes a “Create new snippet” option if no match is found.
+    - Snippet Autocomplete & Token Rendering” (covers @ trigger, dropdown, blue pill token, create‑from‑dropdown).
+
 - **Implementation Steps:**
+       1a.  **rich-text-editor.tsx:** Client component wrapping TipTap v3 Starter‑Kit plus custom `Mention` extension.
+         - Props: `value`, `onChange`, `disabled`.
+         - Serializes tokens to plain text `@snippet-name` for DB storage.
+         - Receives `snippets` array to feed the suggestion list.
+
     1.  **Page (`/prompts/page.tsx`):** Server component, uses Suspense. Fetches prompts using `getPromptTemplatesAction`. Renders `PromptsList` and `CreatePromptButton`.
     2.  **List (`prompts-list.tsx`):** Server/Client component displaying prompts using a responsive grid of **cards**. Each card should show title, default LLM, timestamp, and actions (e.g., Generate Document, Edit, Delete).
     3.  **Button (`create-prompt-button.tsx`):** Client component triggering the modal.
@@ -131,6 +152,9 @@
     - **Invalid Placeholder Formats:** If the user enters incorrectly formatted placeholders (e.g., `{placeholder}`), warn or highlight them during input or before saving.
     - **LLM Failures:** If optimization or title generation fails, display an error toast/message. Allow the user to retry the LLM call or save the prompt with the raw text and manually enter a title.
     - **Ownership Enforcement:** Database queries and actions MUST filter by `userId` to ensure users only see and modify their own templates.
+    -     - **Autocomplete Debounce:** Mention suggestion query debounced 150 ms to avoid excessive network calls.
+    - **Unknown Snippet Creation:** Selecting “Create new snippet” opens the Create Context Snippet modal pre‑filled with the typed name.
+
 
 ### 3.2 Document Generation (Milestone 2)
 - **User Story:** As a user, I want to generate documents using my saved prompt templates, provide specific inputs for placeholders, choose or override the LLM, and then view, edit, save, copy, or download the result.
@@ -191,6 +215,8 @@
         - `getContextSnippetByNameAction(name: string, userId: string): Promise<ActionState<SelectContextSnippet>>` (Used during generation)
         - `updateContextSnippetAction(id: string, data: Partial<InsertContextSnippet>, userId: string): Promise<ActionState<SelectContextSnippet>>`
         - `deleteContextSnippetAction(id: string, userId: string): Promise<ActionState<void>>`
+        -  Supports optional `search?: string` param for LIKE‑filtered results used by the editor autocomplete.
+
 - **Error Handling & Edge Cases:**
     - **Missing Snippet:** Handle non-existent snippet names (`@name`) during generation gracefully. Options: skip replacement, show a warning in the generated output, or fail the generation with an error message.
     - **Name Format/Validation:** Validate snippet name format (`@` followed by alphanumeric/underscore). Enforce the `@` prefix.
@@ -498,6 +524,8 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
     - `generateDocumentAction(data: { promptTemplateId?: string; rawPrompt?: string; inputs: Record<string, string>; contextSnippetNames?: string[]; llmProvider: LlmProviderEnum; userId: string; workflowInstanceId?: string; workflowNodeId?: string; }): Promise<ActionState<SelectDocument>>`: Handles fetching template/snippets, placeholder/snippet replacement, calling `lib/llm.ts`, creating `documents` record (including `workflowInstanceId` and `workflowNodeId` if applicable). Logs metadata like tokens used, model name into `generationMetadata`.
     - `editDocumentViaChatAction(data: { documentId: string; currentContent: string; command: string; userId: string; }): Promise<ActionState<{newContent: string; aiResponse: string}>>`: Calls `lib/llm.ts` with edit prompt.
     - `suggestPromptImprovementAction(data: { originalPrompt: SelectPromptTemplate; finalDocumentContent: string; userId: string; }): Promise<ActionState<string>>`: Calls `lib/llm.ts` with improvement prompt.
+    - No changes required for snippet autocomplete; editor still stores plain‑text `@snippet-name`, resolved during `generateDocumentAction`.
+
 - **`workflow-actions.ts` (`actions/workflow-actions.ts`):**
     - `runWorkflowInstanceAction(instanceId: string, userId: string): Promise<ActionState<void>>`: Orchestrates the step-by-step execution of a workflow instance. Fetches instance/template. Iterates through nodes based on `edges`, calls `generateDocumentAction` for each prompt node (passing `instanceId`, `nodeId`), updates `workflow_instances.nodeStatuses` after each step. Handles sequential execution initially.
     - `retryWorkflowNodeAction(instanceId: string, nodeId: string, userId: string): Promise<ActionState<void>>`: Allows retrying a failed node. Resets node status and re-triggers processing for that node.
@@ -521,6 +549,9 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
     - Example Success: `#10B981` (Emerald 500)
     - Example Danger: `#EF4444` (Red 500)
     - Example Neutral: Tailwind `slate` or `gray` palettes.
+    - **Snippet Token:** `bg-sky-100 text-sky-700` (light) / `bg-sky-900 text-sky-100` (dark) with `rounded px-1.5 py-0.5`.
+    - **Autocomplete Dropdown:** Uses Shadcn `command` popover; 260 px width, shadow `shadow-lg`, radius `rounded-md`.
+
 - **Typography:**
     - Primary Font: Inter (sans-serif), loaded via `next/font/google`.
     - Secondary Font: Poppins (sans-serif, optional for display headings), loaded via `next/font/google`.
@@ -585,6 +616,13 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
 - **Examples:** Page components (`/prompts/page.tsx`), list components fetching data (`prompts-list.tsx` if server-rendered), layout components (`app/(protected)/layout.tsx`).
 
 ### 7.2 Client Components (`"use client"`)
+#### Rich‑Text Editor (TipTap v3)
+
+- Located at `app/(protected)/prompts/_components/rich-text-editor.tsx`.
+- Initializes TipTap v3 with Starter‑Kit and a shared `Mention` extension (`components/editor/mention-extension.ts`).
+- Exposes `content` (string) and `setContent` callback to parent modal.
+- Blue pill tokens use Tailwind classes `bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-100 rounded px-1.5`.
+
 - **State Management:**
     - Local state: `useState`, `useReducer`.
     - Forms: `react-hook-form` recommended for complex forms. Use `useFormState`/`useActionState` (React 18 experimental) for simpler forms handling Server Action responses directly.
@@ -719,6 +757,8 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
 - **Frameworks:** Vitest for unit/integration tests (runs in Node environment, good for Next.js), React Testing Library (RTL) for component interactions, Playwright for E2E tests.
 - **Unit Tests (`*.test.ts`):**
     - Test utility functions (`lib/utils.ts`).
+- **Unit (Vitest):** Verify `rich-text-editor` converts a selected snippet into the correct plain‑text `@snippet-name` on `onChange`.
+
     - Test Server Action logic: Mock Drizzle DB calls (`vi.mock('@/db/db', ...)`), mock LLM API calls (`vi.mock('@/lib/llm', ...)`), mock Clerk `auth()` (`vi.mock('@clerk/nextjs/server', ...)`). Verify input validation, business logic execution paths, `ActionState` return values, error handling.
     ```typescript
     // Example: testing a simple action (vitest syntax)
@@ -771,6 +811,8 @@ export type InsertWorkflowInstance = typeof workflowInstancesTable.$inferInsert;
         - Sign up -> Create Prompt -> Generate Document -> Edit Document -> Save.
         - Create Workflow Template -> Add Nodes -> Save -> Run Workflow -> Verify outputs/instance status.
         - Sign in -> Manage Context Snippets (Create, Edit, Delete).
+        - **E2E (Playwright):** In Create Prompt flow, type “@com” → expect dropdown appears → press Tab → blue token renders in the editor.
+
     - Requires setting up a consistent test environment:
         - Seed database with test data before runs (e.g., using a script).
         - Use Clerk test credentials/modes if available.

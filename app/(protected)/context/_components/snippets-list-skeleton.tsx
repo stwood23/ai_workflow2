@@ -1,72 +1,19 @@
 "use server"
 
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table"
+import TableSkeleton from "@/components/ui/table-skeleton"
 
 /**
  * @description
- * Renders a skeleton loading state for the context snippets list.
- * Mimics the structure of the DataTable used in `SnippetsList`.
+ * Renders a skeleton loading state for the context snippets list
+ * using the shared TableSkeleton component.
  *
  * @dependencies
- * - @/components/ui/skeleton: Shadcn Skeleton component.
- * - @/components/ui/table: Shadcn Table components.
+ * - @/components/ui/table-skeleton: The shared table skeleton component.
  *
  * @notes
- * - Used as the fallback for the Suspense boundary in the main context page.
+ * - Passes specific header widths appropriate for the snippets table.
  */
 export default async function SnippetsListSkeleton() {
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">
-              <Skeleton className="h-4 w-full" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-full" />
-            </TableHead>
-            <TableHead className="w-[150px]">
-              <Skeleton className="h-4 w-full" />
-            </TableHead>
-            <TableHead className="w-[150px]">
-              <Skeleton className="h-4 w-full" />
-            </TableHead>
-            <TableHead className="w-[100px]">
-              <Skeleton className="h-4 w-full" />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[...Array(5)].map((_, i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-full" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
+  const headerWidths = ["w-[200px]", "", "w-[150px]", "w-[150px]", "w-[100px]"]
+  return <TableSkeleton numCols={5} numRows={5} headerWidths={headerWidths} />
 }
